@@ -67,7 +67,6 @@ app.listen(PORT, () => {
     console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
     console.log(`🌍 Zona horaria: ${process.env.TIMEZONE || 'America/Bogota'}`);
     
-    // Iniciar trabajos cron para recordatorios
+    // Iniciar trabajos cron para recordatorios y auto-cancelación
     iniciarCronJobs();
-    console.log('⏰ Sistema de recordatorios activo');
 });

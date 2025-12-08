@@ -206,6 +206,13 @@ const Venta = {
     const query = 'SELECT id FROM ventas WHERE cita_id = ?';
     const [rows] = await pool.execute(query, [citaId]);
     return rows.length > 0;
+  },
+
+  // Eliminar venta por cita (cuando se cancela una cita completada)
+  async eliminarPorCita(citaId) {
+    const query = 'DELETE FROM ventas WHERE cita_id = ?';
+    const [result] = await pool.execute(query, [citaId]);
+    return result.affectedRows > 0;
   }
 };
 

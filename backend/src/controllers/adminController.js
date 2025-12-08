@@ -225,10 +225,25 @@ const adminController = {
     async cancelarCita(req, res) {
         try {
             const { id } = req.params;
+            
+            // Verificar si la cita estaba completada para eliminar la venta
+            const cita = await Cita.obtenerPorId(id);
+            const estabaCompletada = cita && cita.estado === 'completada';
+            
             const cancelada = await Cita.cancelar(id);
             
             if (!cancelada) {
                 return res.status(404).json({ error: 'Cita no encontrada' });
+            }
+            
+            // Si la cita estaba completada, eliminar la venta registrada
+            if (estabaCompletada) {
+                try {
+                    await Venta.eliminarPorCita(id);
+                    console.log(`⚠️ Venta eliminada por cancelación de cita #${id}`);
+                } catch (ventaError) {
+                    console.error('Error al eliminar venta:', ventaError);
+                }
             }
             
             res.json({ message: 'Cita cancelada exitosamente' });

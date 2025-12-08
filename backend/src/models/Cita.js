@@ -8,11 +8,18 @@ const Cita = {
                 c.*,
                 s.nombre as servicio_nombre,
                 s.precio as servicio_precio,
-                e.nombre as empleado_nombre
+                e.nombre as empleado_nombre,
+                CASE 
+                    WHEN c.fecha >= CURDATE() THEN 0
+                    ELSE 1
+                END as es_pasada
             FROM citas c
             INNER JOIN servicios s ON c.servicio_id = s.id
             INNER JOIN empleados e ON c.empleado_id = e.id
-            ORDER BY c.fecha DESC, c.hora DESC
+            ORDER BY 
+                es_pasada ASC,
+                c.fecha ASC, 
+                c.hora ASC
         `);
         return rows;
     },
@@ -24,12 +31,19 @@ const Cita = {
                 c.*,
                 s.nombre as servicio_nombre,
                 s.precio as servicio_precio,
-                e.nombre as empleado_nombre
+                e.nombre as empleado_nombre,
+                CASE 
+                    WHEN c.fecha >= CURDATE() THEN 0
+                    ELSE 1
+                END as es_pasada
             FROM citas c
             INNER JOIN servicios s ON c.servicio_id = s.id
             INNER JOIN empleados e ON c.empleado_id = e.id
             WHERE c.estado = ?
-            ORDER BY c.fecha, c.hora
+            ORDER BY 
+                es_pasada ASC,
+                c.fecha ASC, 
+                c.hora ASC
         `, [estado]);
         return rows;
     },
@@ -178,6 +192,17 @@ const Cita = {
     // Confirmar cita
     async confirmar(id) {
         return await this.actualizarEstado(id, 'confirmada');
+    },
+
+    // Cancelar automáticamente citas vencidas (más de 3 horas después de la hora programada)
+    async cancelarCitasVencidas() {
+        const [result] = await pool.query(`
+            UPDATE citas 
+            SET estado = 'cancelada'
+            WHERE estado IN ('pendiente', 'confirmada')
+            AND TIMESTAMP(fecha, hora) < DATE_SUB(NOW(), INTERVAL 3 HOUR)
+        `);
+        return result.affectedRows;
     }
 };
 

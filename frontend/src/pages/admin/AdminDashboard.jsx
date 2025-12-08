@@ -6,21 +6,59 @@ import GestionEmpleados from './GestionEmpleados';
 import GestionBloqueos from './GestionBloqueos';
 import GestionReportes from './GestionReportes';
 
+// Función helper para formatear fechas correctamente
+const formatearFecha = (fechaString) => {
+  try {
+    if (!fechaString) return 'N/A';
+    // Dividir la fecha en partes [año, mes, día]
+    const partes = fechaString.split('-').map(n => parseInt(n, 10));
+    if (partes.length !== 3) return 'Fecha inválida';
+    
+    // Crear fecha local sin problemas de zona horaria
+    const fecha = new Date(partes[0], partes[1] - 1, partes[2]);
+    
+    return fecha.toLocaleDateString('es-CO', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short'
+    });
+  } catch (error) {
+    console.error('Error al formatear fecha:', error);
+    return 'Fecha inválida';
+  }
+};
+
 // Componente para gestión de citas con diseño premium
 function GestionCitas() {
   const [citas, setCitas] = useState([]);
+  const [citasFiltradas, setCitasFiltradas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState('');
+  const [busquedaNombre, setBusquedaNombre] = useState('');
   const [mensaje, setMensaje] = useState('');
 
   useEffect(() => {
     cargarCitas();
   }, [filtroEstado]);
 
+  useEffect(() => {
+    // Filtrar por nombre cuando cambie la búsqueda
+    if (busquedaNombre.trim() === '') {
+      setCitasFiltradas(citas);
+    } else {
+      const filtradas = citas.filter(cita => 
+        cita.cliente_nombre.toLowerCase().includes(busquedaNombre.toLowerCase()) ||
+        cita.cliente_cedula.includes(busquedaNombre)
+      );
+      setCitasFiltradas(filtradas);
+    }
+  }, [busquedaNombre, citas]);
+
   const cargarCitas = async () => {
     try {
       const response = await adminAPI.obtenerCitas(filtroEstado);
       setCitas(response.data);
+      setCitasFiltradas(response.data);
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -57,26 +95,79 @@ function GestionCitas() {
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
-        marginBottom: '2rem'
+        marginBottom: '2rem',
+        gap: '1rem',
+        flexWrap: 'wrap'
       }}>
         <h2 style={{ margin: 0 }}>Gestión de Citas</h2>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <label style={{ color: 'var(--neutral-light)', fontWeight: '500' }}>
-            Filtrar:
-          </label>
-          <select 
-            value={filtroEstado} 
-            onChange={(e) => setFiltroEstado(e.target.value)}
-            style={{ minWidth: '180px' }}
-          >
-            <option value="">Todas las Citas</option>
-            <option value="pendiente">Pendientes</option>
-            <option value="confirmada">Confirmadas</option>
-            <option value="cancelada">Canceladas</option>
-            <option value="completada">Completadas</option>
-          </select>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <label style={{ color: 'var(--neutral-light)', fontWeight: '500' }}>
+              Buscar:
+            </label>
+            <input
+              type="text"
+              placeholder="Nombre o cédula..."
+              value={busquedaNombre}
+              onChange={(e) => setBusquedaNombre(e.target.value)}
+              style={{ 
+                minWidth: '200px',
+                padding: '0.5rem',
+                borderRadius: '4px',
+                border: '1px solid var(--neutral-gray)',
+                background: 'var(--neutral-dark)',
+                color: 'var(--neutral-light)'
+              }}
+            />
+            {busquedaNombre && (
+              <button
+                onClick={() => setBusquedaNombre('')}
+                style={{
+                  padding: '0.5rem',
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--neutral-silver)',
+                  cursor: 'pointer',
+                  fontSize: '1.2rem'
+                }}
+                title="Limpiar búsqueda"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <label style={{ color: 'var(--neutral-light)', fontWeight: '500' }}>
+              Estado:
+            </label>
+            <select 
+              value={filtroEstado} 
+              onChange={(e) => setFiltroEstado(e.target.value)}
+              style={{ minWidth: '180px' }}
+            >
+              <option value="">Todas las Citas</option>
+              <option value="pendiente">Pendientes</option>
+              <option value="confirmada">Confirmadas</option>
+              <option value="cancelada">Canceladas</option>
+              <option value="completada">Completadas</option>
+            </select>
+          </div>
         </div>
       </div>
+
+      {busquedaNombre && (
+        <div style={{ 
+          marginBottom: '1rem', 
+          color: 'var(--neutral-silver)',
+          fontSize: '0.9rem'
+        }}>
+          {citasFiltradas.length === 0 ? (
+            <span>❌ No se encontraron citas con "{busquedaNombre}"</span>
+          ) : (
+            <span>🔍 Mostrando {citasFiltradas.length} resultado(s) para "{busquedaNombre}"</span>
+          )}
+        </div>
+      )}
 
       {mensaje && (
         <div className="success-message" style={{ marginBottom: '1.5rem' }}>
@@ -88,92 +179,148 @@ function GestionCitas() {
         <table>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Cliente</th>
-              <th>Contacto</th>
-              <th>Fecha</th>
-              <th>Hora</th>
-              <th>Servicio</th>
-              <th>Barbero</th>
-              <th>Estado</th>
-              <th>Acciones</th>
+              <th style={{ minWidth: '140px' }}>Cliente</th>
+              <th style={{ width: '120px' }}>Teléfono</th>
+              <th style={{ minWidth: '130px' }}>Fecha</th>
+              <th style={{ width: '80px' }}>Hora</th>
+              <th style={{ minWidth: '100px' }}>Servicio</th>
+              <th style={{ minWidth: '120px' }}>Barbero</th>
+              <th style={{ width: '100px' }}>Estado</th>
+              <th style={{ minWidth: '180px', textAlign: 'center' }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {citas.length === 0 ? (
+            {citasFiltradas.length === 0 ? (
               <tr>
-                <td colSpan="9" style={{ textAlign: 'center', padding: '3rem', color: 'var(--neutral-silver)' }}>
-                  No hay citas {filtroEstado ? `en estado "${filtroEstado}"` : 'registradas'}
+                <td colSpan="8" style={{ textAlign: 'center', padding: '3rem', color: 'var(--neutral-silver)' }}>
+                  {busquedaNombre ? 
+                    `No se encontraron citas para "${busquedaNombre}"` : 
+                    `No hay citas ${filtroEstado ? `en estado "${filtroEstado}"` : 'registradas'}`
+                  }
                 </td>
               </tr>
             ) : (
-              citas.map((cita) => (
+              citasFiltradas.map((cita) => (
                 <tr key={cita.id}>
-                  <td style={{ fontWeight: 'bold', color: 'var(--primary-gold)' }}>
-                    #{cita.id}
-                  </td>
                   <td>
                     <div style={{ fontWeight: '600' }}>{cita.cliente_nombre}</div>
                     <div style={{ fontSize: '0.85rem', color: 'var(--neutral-silver)' }}>
                       {cita.cliente_cedula}
                     </div>
                   </td>
-                  <td>
-                    <div>{cita.cliente_telefono}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--neutral-silver)' }}>
-                      {cita.cliente_email}
-                    </div>
-                  </td>
                   <td style={{ fontWeight: '500' }}>
-                    {new Date(cita.fecha + 'T00:00:00').toLocaleDateString('es-CO', {
-                      weekday: 'short',
-                      day: 'numeric',
-                      month: 'short'
-                    })}
+                    {cita.cliente_telefono}
                   </td>
-                  <td style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+                  <td style={{ 
+                    fontWeight: '600', 
+                    fontSize: '0.95rem',
+                    whiteSpace: 'nowrap',
+                    padding: '1rem'
+                  }}>
+                    {formatearFecha(cita.fecha)}
+                  </td>
+                  <td style={{ fontSize: '1.1rem', fontWeight: 'bold', textAlign: 'center' }}>
                     {cita.hora.substring(0, 5)}
                   </td>
                   <td>{cita.servicio_nombre}</td>
                   <td>{cita.empleado_nombre}</td>
-                  <td>
+                  <td style={{ textAlign: 'center' }}>
                     <span className={`badge badge-${cita.estado}`}>
                       {cita.estado}
                     </span>
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: '0.5rem', 
+                      flexWrap: 'wrap',
+                      justifyContent: 'center',
+                      alignItems: 'center'
+                    }}>
+                      {/* Estado: PENDIENTE - Solo confirmar o cancelar */}
                       {cita.estado === 'pendiente' && (
                         <>
                           <button 
                             onClick={() => cambiarEstado(cita.id, 'confirmar')}
                             className="btn btn-primary" 
-                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                            style={{ 
+                              padding: '0.5rem 1rem', 
+                              fontSize: '0.85rem',
+                              minWidth: '90px'
+                            }}
                           >
                             ✓ Confirmar
                           </button>
                           <button 
                             onClick={() => cambiarEstado(cita.id, 'cancelar')}
                             className="btn btn-danger" 
-                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                            style={{ 
+                              padding: '0.5rem 1rem', 
+                              fontSize: '0.85rem',
+                              minWidth: '90px'
+                            }}
                           >
                             ✗ Cancelar
                           </button>
                         </>
                       )}
+                      
+                      {/* Estado: CONFIRMADA - Completar o cancelar */}
                       {cita.estado === 'confirmada' && (
+                        <>
+                          <button 
+                            onClick={() => cambiarEstado(cita.id, 'completar')}
+                            className="btn btn-primary" 
+                            style={{ 
+                              padding: '0.5rem 1rem', 
+                              fontSize: '0.85rem',
+                              minWidth: '90px'
+                            }}
+                          >
+                            ✓ Completar
+                          </button>
+                          <button 
+                            onClick={() => cambiarEstado(cita.id, 'cancelar')}
+                            className="btn btn-danger" 
+                            style={{ 
+                              padding: '0.5rem 1rem', 
+                              fontSize: '0.85rem',
+                              minWidth: '90px'
+                            }}
+                          >
+                            ✗ Cancelar
+                          </button>
+                        </>
+                      )}
+                      
+                      {/* Estado: COMPLETADA - Solo cancelar (para corregir errores) */}
+                      {cita.estado === 'completada' && (
                         <button 
-                          onClick={() => cambiarEstado(cita.id, 'completar')}
-                          className="btn btn-primary" 
-                          style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                          onClick={() => cambiarEstado(cita.id, 'cancelar')}
+                          className="btn btn-danger" 
+                          style={{ 
+                            padding: '0.5rem 1rem', 
+                            fontSize: '0.85rem',
+                            minWidth: '90px'
+                          }}
                         >
-                          ✓ Completar
+                          ✗ Cancelar
                         </button>
                       )}
-                      {(cita.estado === 'completada' || cita.estado === 'cancelada') && (
-                        <span style={{ color: 'var(--neutral-silver)', fontSize: '0.85rem' }}>
-                          Sin acciones
-                        </span>
+                      
+                      {/* Estado: CANCELADA - Reactivar como confirmada */}
+                      {cita.estado === 'cancelada' && (
+                        <button 
+                          onClick={() => cambiarEstado(cita.id, 'confirmar')}
+                          className="btn btn-primary" 
+                          style={{ 
+                            padding: '0.5rem 1rem', 
+                            fontSize: '0.85rem',
+                            minWidth: '90px'
+                          }}
+                        >
+                          ↻ Reactivar
+                        </button>
                       )}
                     </div>
                   </td>
@@ -312,15 +459,15 @@ function AdminDashboard() {
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 70px)' }}>
         {/* Sidebar Premium */}
         <div style={{ 
-          width: '280px', 
+          width: '220px', 
           background: 'var(--neutral-charcoal)',
           borderRight: '1px solid var(--neutral-gray)',
           padding: '2rem 0'
         }}>
-          <div style={{ padding: '0 1.5rem', marginBottom: '2rem' }}>
+          <div style={{ padding: '0 1rem', marginBottom: '2rem' }}>
             <h3 style={{ 
               color: 'var(--primary-gold)', 
-              fontSize: '1.1rem',
+              fontSize: '1rem',
               textTransform: 'uppercase',
               letterSpacing: '1px',
               marginBottom: '1.5rem'
@@ -338,19 +485,19 @@ function AdminDashboard() {
                 border: 'none',
                 textAlign: 'left',
                 cursor: 'pointer',
-                padding: '1rem 1.5rem',
+                padding: '0.9rem 1rem',
                 borderLeft: seccionActiva === 'citas' ? '4px solid var(--primary-gold)' : '4px solid transparent',
                 backgroundColor: seccionActiva === 'citas' ? 'rgba(212, 175, 55, 0.1)' : 'transparent',
                 fontWeight: seccionActiva === 'citas' ? '600' : '400',
                 transition: 'var(--transition)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '1rem',
-                fontSize: '1rem'
+                gap: '0.8rem',
+                fontSize: '0.95rem'
               }}
             >
-              <span style={{ fontSize: '1.3rem' }}>📅</span>
-              <span>Gestión de Citas</span>
+              <span style={{ fontSize: '1.2rem' }}>📅</span>
+              <span>Citas</span>
             </button>
             
             <button 
@@ -361,19 +508,19 @@ function AdminDashboard() {
                 border: 'none',
                 textAlign: 'left',
                 cursor: 'pointer',
-                padding: '1rem 1.5rem',
+                padding: '0.9rem 1rem',
                 borderLeft: seccionActiva === 'servicios' ? '4px solid var(--primary-gold)' : '4px solid transparent',
                 backgroundColor: seccionActiva === 'servicios' ? 'rgba(212, 175, 55, 0.1)' : 'transparent',
                 fontWeight: seccionActiva === 'servicios' ? '600' : '400',
                 transition: 'var(--transition)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '1rem',
-                fontSize: '1rem'
+                gap: '0.8rem',
+                fontSize: '0.95rem'
               }}
             >
-              <span style={{ fontSize: '1.3rem' }}>✂️</span>
-              <span>Gestión de Servicios</span>
+              <span style={{ fontSize: '1.2rem' }}>✂️</span>
+              <span>Servicios</span>
             </button>
             
             <button 
@@ -384,19 +531,19 @@ function AdminDashboard() {
                 border: 'none',
                 textAlign: 'left',
                 cursor: 'pointer',
-                padding: '1rem 1.5rem',
+                padding: '0.9rem 1rem',
                 borderLeft: seccionActiva === 'empleados' ? '4px solid var(--primary-gold)' : '4px solid transparent',
                 backgroundColor: seccionActiva === 'empleados' ? 'rgba(212, 175, 55, 0.1)' : 'transparent',
                 fontWeight: seccionActiva === 'empleados' ? '600' : '400',
                 transition: 'var(--transition)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '1rem',
-                fontSize: '1rem'
+                gap: '0.8rem',
+                fontSize: '0.95rem'
               }}
             >
-              <span style={{ fontSize: '1.3rem' }}>👥</span>
-              <span>Gestión de Empleados</span>
+              <span style={{ fontSize: '1.2rem' }}>👥</span>
+              <span>Empleados</span>
             </button>
             
             <button 
@@ -407,19 +554,19 @@ function AdminDashboard() {
                 border: 'none',
                 textAlign: 'left',
                 cursor: 'pointer',
-                padding: '1rem 1.5rem',
+                padding: '0.9rem 1rem',
                 borderLeft: seccionActiva === 'bloqueos' ? '4px solid var(--primary-gold)' : '4px solid transparent',
                 backgroundColor: seccionActiva === 'bloqueos' ? 'rgba(212, 175, 55, 0.1)' : 'transparent',
                 fontWeight: seccionActiva === 'bloqueos' ? '600' : '400',
                 transition: 'var(--transition)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '1rem',
-                fontSize: '1rem'
+                gap: '0.8rem',
+                fontSize: '0.95rem'
               }}
             >
-              <span style={{ fontSize: '1.3rem' }}>🚫</span>
-              <span>Bloqueos y Vacaciones</span>
+              <span style={{ fontSize: '1.2rem' }}>🚫</span>
+              <span>Bloqueos</span>
             </button>
             
             <button 
@@ -430,19 +577,19 @@ function AdminDashboard() {
                 border: 'none',
                 textAlign: 'left',
                 cursor: 'pointer',
-                padding: '1rem 1.5rem',
+                padding: '0.9rem 1rem',
                 borderLeft: seccionActiva === 'reportes' ? '4px solid var(--primary-gold)' : '4px solid transparent',
                 backgroundColor: seccionActiva === 'reportes' ? 'rgba(212, 175, 55, 0.1)' : 'transparent',
                 fontWeight: seccionActiva === 'reportes' ? '600' : '400',
                 transition: 'var(--transition)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '1rem',
-                fontSize: '1rem'
+                gap: '0.8rem',
+                fontSize: '0.95rem'
               }}
             >
-              <span style={{ fontSize: '1.3rem' }}>📊</span>
-              <span>Reportes y Estadísticas</span>
+              <span style={{ fontSize: '1.2rem' }}>📊</span>
+              <span>Reportes</span>
             </button>
             
             <Link 
@@ -450,19 +597,20 @@ function AdminDashboard() {
               style={{ 
                 color: 'var(--neutral-light)',
                 textDecoration: 'none',
-                padding: '1rem 1.5rem',
+                padding: '0.9rem 1rem',
                 borderLeft: '4px solid transparent',
                 fontWeight: '400',
                 transition: 'var(--transition)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '1rem',
+                gap: '0.8rem',
                 marginTop: '1rem',
-                borderTop: '1px solid var(--neutral-gray)'
+                borderTop: '1px solid var(--neutral-gray)',
+                fontSize: '0.95rem'
               }}
             >
-              <span style={{ fontSize: '1.3rem' }}>🏠</span>
-              <span>Ir al Sitio Web</span>
+              <span style={{ fontSize: '1.2rem' }}>🏠</span>
+              <span>Sitio Web</span>
             </Link>
           </nav>
         </div>

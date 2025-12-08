@@ -37,5 +37,25 @@ export function iniciarCronJobs() {
         }
     });
 
+    // Ejecutar cada hora para cancelar automáticamente citas vencidas
+    cron.schedule('0 * * * *', async () => {
+        console.log('🔍 Verificando citas vencidas para auto-cancelación...');
+        
+        try {
+            // Cancelar citas que pasaron más de 3 horas y no fueron completadas/confirmadas
+            const citasCanceladas = await Cita.cancelarCitasVencidas();
+            
+            if (citasCanceladas > 0) {
+                console.log(`✅ ${citasCanceladas} cita(s) cancelada(s) automáticamente por vencimiento`);
+            } else {
+                console.log('✅ No hay citas vencidas para cancelar');
+            }
+        } catch (error) {
+            console.error('❌ Error en cron job de cancelación automática:', error);
+        }
+    });
+
     console.log('✅ Cron jobs iniciados');
+    console.log('⏰ Sistema de recordatorios activo');
+    console.log('⚠️  Sistema de auto-cancelación activo');
 }
