@@ -10,7 +10,10 @@ function ReservarCita() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const [mesActual, setMesActual] = useState(new Date());
+  const [mesActual, setMesActual] = useState(() => {
+    const hoy = new Date();
+    return new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  });
 
   const [formData, setFormData] = useState({
     servicio_id: '',
@@ -18,7 +21,6 @@ function ReservarCita() {
     fecha: '',
     hora: '',
     cliente_nombre: '',
-    cliente_cedula: '',
     cliente_email: '',
     cliente_telefono: ''
   });
@@ -109,26 +111,31 @@ function ReservarCita() {
 
   const formatDate = (day) => {
     const { year, month } = getDaysInMonth(mesActual);
-    const date = new Date(year, month, day);
-    return date.toISOString().split('T')[0];
+    const mes = String(month + 1).padStart(2, '0');
+    const dia = String(day).padStart(2, '0');
+    return `${year}-${mes}-${dia}`;
   };
 
   const isDateDisabled = (day) => {
-    const selectedDate = new Date(mesActual.getFullYear(), mesActual.getMonth(), day);
+    const { year, month } = getDaysInMonth(mesActual);
+    const selectedDate = new Date(year, month, day);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    selectedDate.setHours(0, 0, 0, 0);
     return selectedDate < today;
   };
 
   const cambiarMes = (direccion) => {
-    const newDate = new Date(mesActual);
-    newDate.setMonth(newDate.getMonth() + direccion);
-    setMesActual(newDate);
+    setMesActual(prev => {
+      const newDate = new Date(prev.getFullYear(), prev.getMonth() + direccion, 1);
+      return newDate;
+    });
   };
 
   const seleccionarFecha = (day) => {
     if (isDateDisabled(day)) return;
     const fechaFormateada = formatDate(day);
+    console.log('📅 Día seleccionado:', day, '| Fecha formateada:', fechaFormateada);
     setFormData({ ...formData, fecha: fechaFormateada, hora: '' });
     setError('');
   };
@@ -188,6 +195,8 @@ function ReservarCita() {
         navigate('/');
       }, 4000);
     } catch (error) {
+      console.error('Error completo:', error);
+      console.error('Respuesta del servidor:', error.response?.data);
       setError(error.response?.data?.error || 'Error al crear la cita');
     } finally {
       setLoading(false);
@@ -335,7 +344,10 @@ function ReservarCita() {
                 {servicios.map((servicio) => (
                   <div 
                     key={servicio.id}
-                    onClick={() => setFormData({ ...formData, servicio_id: servicio.id })}
+                    onClick={() => {
+                      setFormData({ ...formData, servicio_id: servicio.id });
+                      setPaso(2);
+                    }}
                     className="service-card"
                     style={{
                       cursor: 'pointer',
@@ -369,13 +381,6 @@ function ReservarCita() {
                   </div>
                 ))}
               </div>
-              <button 
-                onClick={siguientePaso} 
-                className="btn btn-primary" 
-                style={{ width: '100%', marginTop: '2rem', padding: '1.2rem' }}
-              >
-                Continuar →
-              </button>
             </div>
           )}
 
@@ -389,7 +394,10 @@ function ReservarCita() {
                 {empleados.map((empleado) => (
                   <div 
                     key={empleado.id}
-                    onClick={() => setFormData({ ...formData, empleado_id: empleado.id.toString() })}
+                    onClick={() => {
+                      setFormData({ ...formData, empleado_id: empleado.id.toString(), fecha: '', hora: '' });
+                      setPaso(3);
+                    }}
                     style={{
                       padding: '2rem 1.5rem',
                       background: 'var(--neutral-dark)',
@@ -456,22 +464,13 @@ function ReservarCita() {
                   </div>
                 ))}
               </div>
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-                <button 
-                  onClick={anteriorPaso} 
-                  className="btn btn-secondary" 
-                  style={{ flex: 1, padding: '1.2rem' }}
-                >
-                  ← Atrás
-                </button>
-                <button 
-                  onClick={siguientePaso} 
-                  className="btn btn-primary" 
-                  style={{ flex: 2, padding: '1.2rem' }}
-                >
-                  Continuar →
-                </button>
-              </div>
+              <button 
+                onClick={anteriorPaso} 
+                className="btn btn-secondary" 
+                style={{ width: '100%', marginTop: '2rem', padding: '1.2rem' }}
+              >
+                ← Atrás
+              </button>
             </div>
           )}
 
@@ -481,6 +480,40 @@ function ReservarCita() {
               <h3 style={{ marginBottom: '2rem', textAlign: 'center' }}>
                 Elegí Fecha y Hora
               </h3>
+              
+              {/* Selector de fecha nativo - OCULTO, usando calendario custom */}
+              <div style={{
+                marginBottom: '2rem',
+                display: 'none'
+              }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '1rem',
+                  color: 'var(--primary-gold)',
+                  fontSize: '1.1rem',
+                  fontWeight: '600'
+                }}>
+                  Seleccioná la fecha:
+                </label>
+                <input
+                  type="date"
+                  value={formData.fecha}
+                  onChange={(e) => {
+                    setFormData({ ...formData, fecha: e.target.value, hora: '' });
+                    setError('');
+                  }}
+                  min={new Date().toISOString().split('T')[0]}
+                  style={{
+                    width: '100%',
+                    padding: '1rem',
+                    fontSize: '1.1rem',
+                    borderRadius: '6px',
+                    border: '1px solid var(--neutral-gray)',
+                    background: 'var(--neutral-dark)',
+                    color: 'var(--neutral-light)'
+                  }}
+                />
+              </div>
               
               {/* Calendario Personalizado */}
               <div style={{ 
@@ -695,29 +728,16 @@ function ReservarCita() {
                 Completá Tus Datos
               </h3>
               
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Nombre Completo *</label>
-                  <input 
-                    type="text" 
-                    name="cliente_nombre"
-                    value={formData.cliente_nombre}
-                    onChange={handleChange}
-                    placeholder="Juan Pérez"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Cédula *</label>
-                  <input 
-                    type="text" 
-                    name="cliente_cedula"
-                    value={formData.cliente_cedula}
-                    onChange={handleChange}
-                    placeholder="1234567890"
-                    required
-                  />
-                </div>
+              <div className="form-group">
+                <label>Nombre Completo *</label>
+                <input 
+                  type="text" 
+                  name="cliente_nombre"
+                  value={formData.cliente_nombre}
+                  onChange={handleChange}
+                  placeholder="Juan Pérez"
+                  required
+                />
               </div>
 
               <div className="form-row">
@@ -739,9 +759,12 @@ function ReservarCita() {
                     name="cliente_telefono"
                     value={formData.cliente_telefono}
                     onChange={handleChange}
-                    placeholder="3001234567"
+                    placeholder="3816625789"
                     required
                   />
+                  <small style={{ color: 'var(--neutral-silver)', display: 'block', marginTop: '0.3rem' }}>
+                    Ingresá tu número sin 0 ni 15
+                  </small>
                 </div>
               </div>
 

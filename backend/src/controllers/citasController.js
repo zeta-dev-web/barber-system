@@ -16,7 +16,6 @@ const citasController = {
 
             const { 
                 cliente_nombre, 
-                cliente_cedula, 
                 cliente_email, 
                 cliente_telefono, 
                 servicio_id, 
@@ -24,6 +23,9 @@ const citasController = {
                 fecha, 
                 hora 
             } = req.body;
+
+            // Formatear teléfono con código de país Argentina
+            const telefonoFormateado = `+549${cliente_telefono.replace(/^\+549/, '')}`;
 
             // Verificar disponibilidad
             const disponible = await Cita.verificarDisponibilidad(empleado_id, fecha, hora);
@@ -36,9 +38,8 @@ const citasController = {
             // Crear cita
             const citaId = await Cita.crear({
                 cliente_nombre,
-                cliente_cedula,
                 cliente_email,
-                cliente_telefono,
+                cliente_telefono: telefonoFormateado,
                 servicio_id,
                 empleado_id,
                 fecha,
@@ -48,13 +49,20 @@ const citasController = {
             // Obtener datos completos de la cita
             const cita = await Cita.obtenerPorId(citaId);
 
-            // Enviar email de confirmación
+            // Enviar email y WhatsApp de confirmación inmediatamente
             try {
                 await enviarEmailConfirmacion(cita);
                 await Cita.marcarEmailConfirmacionEnviado(citaId);
             } catch (emailError) {
                 console.error('Error al enviar email de confirmación:', emailError);
-                // No fallar la creación de la cita si el email falla
+            }
+
+            try {
+                const whatsappService = await import('../services/whatsappService.js');
+                await whatsappService.enviarConfirmacionCliente(cita);
+                await whatsappService.notificarAdminNuevaCita(cita);
+            } catch (whatsappError) {
+                console.error('Error al enviar WhatsApp de confirmación:', whatsappError);
             }
 
             res.status(201).json({ 

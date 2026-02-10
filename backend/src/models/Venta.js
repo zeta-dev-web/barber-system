@@ -1,218 +1,247 @@
-import pool from '../config/dbConfig.js';
+import prisma from '../config/prisma.js';
 
 const Venta = {
-  // Registrar una venta cuando se completa una cita
   async crear(citaId, empleadoId, servicioId, fecha, monto) {
-    const query = `
-      INSERT INTO ventas (cita_id, empleado_id, servicio_id, fecha, monto)
-      VALUES (?, ?, ?, ?, ?)
-    `;
-    const [result] = await pool.execute(query, [citaId, empleadoId, servicioId, fecha, monto]);
+    const result = await prisma.venta.create({
+      data: {
+        citaId: parseInt(citaId),
+        empleadoId: parseInt(empleadoId),
+        servicioId: parseInt(servicioId),
+        fecha: new Date(fecha),
+        monto
+      }
+    });
     return result;
   },
 
-  // Obtener ventas de un día específico
   async obtenerPorFecha(fecha) {
-    const query = `
-      SELECT 
-        v.*,
-        e.nombre as empleado_nombre,
-        s.nombre as servicio_nombre,
-        c.cliente_nombre
-      FROM ventas v
-      INNER JOIN empleados e ON v.empleado_id = e.id
-      INNER JOIN servicios s ON v.servicio_id = s.id
-      INNER JOIN citas c ON v.cita_id = c.id
-      WHERE v.fecha = ?
-      ORDER BY v.creado_en DESC
-    `;
-    const [rows] = await pool.execute(query, [fecha]);
-    return rows;
+    return await prisma.venta.findMany({
+      where: { fecha: new Date(fecha) },
+      include: {
+        empleado: { select: { nombre: true } },
+        servicio: { select: { nombre: true } },
+        cita: { select: { clienteNombre: true } }
+      },
+      orderBy: { creadoEn: 'desc' }
+    });
   },
 
-  // Obtener ventas por rango de fechas
   async obtenerPorRango(fechaInicio, fechaFin) {
-    const query = `
-      SELECT 
-        v.*,
-        e.nombre as empleado_nombre,
-        s.nombre as servicio_nombre,
-        c.cliente_nombre
-      FROM ventas v
-      INNER JOIN empleados e ON v.empleado_id = e.id
-      INNER JOIN servicios s ON v.servicio_id = s.id
-      INNER JOIN citas c ON v.cita_id = c.id
-      WHERE v.fecha BETWEEN ? AND ?
-      ORDER BY v.fecha ASC, v.creado_en DESC
-    `;
-    const [rows] = await pool.execute(query, [fechaInicio, fechaFin]);
-    return rows;
+    return await prisma.venta.findMany({
+      where: {
+        fecha: {
+          gte: new Date(fechaInicio),
+          lte: new Date(fechaFin)
+        }
+      },
+      include: {
+        empleado: { select: { nombre: true } },
+        servicio: { select: { nombre: true } },
+        cita: { select: { clienteNombre: true } }
+      },
+      orderBy: [
+        { fecha: 'asc' },
+        { creadoEn: 'desc' }
+      ]
+    });
   },
 
-  // Reporte diario: totales por empleado y servicio
   async reporteDiario(fecha) {
-    const queryTotal = `
-      SELECT 
-        COUNT(*) as total_ventas,
-        SUM(monto) as total_dinero
-      FROM ventas
-      WHERE fecha = ?
-    `;
+    const fechaDate = new Date(fecha);
     
-    const queryPorEmpleado = `
-      SELECT 
-        e.nombre as empleado,
-        COUNT(*) as cantidad_servicios,
-        SUM(v.monto) as total_ganado
-      FROM ventas v
-      INNER JOIN empleados e ON v.empleado_id = e.id
-      WHERE v.fecha = ?
-      GROUP BY v.empleado_id, e.nombre
-      ORDER BY total_ganado DESC
-    `;
-    
-    const queryPorServicio = `
-      SELECT 
-        s.nombre as servicio,
-        COUNT(*) as cantidad,
-        SUM(v.monto) as total
-      FROM ventas v
-      INNER JOIN servicios s ON v.servicio_id = s.id
-      WHERE v.fecha = ?
-      GROUP BY v.servicio_id, s.nombre
-      ORDER BY total DESC
-    `;
+    const ventas = await prisma.venta.findMany({
+      where: { fecha: fechaDate },
+      include: {
+        empleado: { select: { nombre: true } },
+        servicio: { select: { nombre: true } }
+      }
+    });
 
-    const [totalRows] = await pool.execute(queryTotal, [fecha]);
-    const [empleadoRows] = await pool.execute(queryPorEmpleado, [fecha]);
-    const [servicioRows] = await pool.execute(queryPorServicio, [fecha]);
+    const total = {
+      total_ventas: ventas.length,
+      total_dinero: ventas.reduce((sum, v) => sum + Number(v.monto), 0)
+    };
+
+    const porEmpleado = Object.values(
+      ventas.reduce((acc, v) => {
+        const key = v.empleadoId;
+        if (!acc[key]) {
+          acc[key] = {
+            empleado: v.empleado.nombre,
+            cantidad_servicios: 0,
+            total_ganado: 0
+          };
+        }
+        acc[key].cantidad_servicios++;
+        acc[key].total_ganado += Number(v.monto);
+        return acc;
+      }, {})
+    ).sort((a, b) => b.total_ganado - a.total_ganado);
+
+    const porServicio = Object.values(
+      ventas.reduce((acc, v) => {
+        const key = v.servicioId;
+        if (!acc[key]) {
+          acc[key] = {
+            servicio: v.servicio.nombre,
+            cantidad: 0,
+            total: 0
+          };
+        }
+        acc[key].cantidad++;
+        acc[key].total += Number(v.monto);
+        return acc;
+      }, {})
+    ).sort((a, b) => b.total - a.total);
 
     return {
       fecha,
-      total: totalRows[0],
-      porEmpleado: empleadoRows,
-      porServicio: servicioRows
+      total,
+      porEmpleado,
+      porServicio
     };
   },
 
-  // Reporte semanal: totales por día
   async reporteSemanal(fechaInicio, fechaFin) {
-    const queryPorDia = `
-      SELECT 
-        fecha,
-        COUNT(*) as total_ventas,
-        SUM(monto) as total_dinero
-      FROM ventas
-      WHERE fecha BETWEEN ? AND ?
-      GROUP BY fecha
-      ORDER BY fecha ASC
-    `;
-    
-    const queryTotal = `
-      SELECT 
-        COUNT(*) as total_ventas,
-        SUM(monto) as total_dinero
-      FROM ventas
-      WHERE fecha BETWEEN ? AND ?
-    `;
+    const ventas = await prisma.venta.findMany({
+      where: {
+        fecha: {
+          gte: new Date(fechaInicio),
+          lte: new Date(fechaFin)
+        }
+      },
+      include: {
+        empleado: { select: { nombre: true } }
+      }
+    });
 
-    const queryPorEmpleado = `
-      SELECT 
-        e.nombre as empleado,
-        COUNT(*) as cantidad_servicios,
-        SUM(v.monto) as total_ganado
-      FROM ventas v
-      INNER JOIN empleados e ON v.empleado_id = e.id
-      WHERE v.fecha BETWEEN ? AND ?
-      GROUP BY v.empleado_id, e.nombre
-      ORDER BY total_ganado DESC
-    `;
+    const total = {
+      total_ventas: ventas.length,
+      total_dinero: ventas.reduce((sum, v) => sum + Number(v.monto), 0)
+    };
 
-    const [diaRows] = await pool.execute(queryPorDia, [fechaInicio, fechaFin]);
-    const [totalRows] = await pool.execute(queryTotal, [fechaInicio, fechaFin]);
-    const [empleadoRows] = await pool.execute(queryPorEmpleado, [fechaInicio, fechaFin]);
+    const porDia = Object.values(
+      ventas.reduce((acc, v) => {
+        const fecha = v.fecha.toISOString().split('T')[0];
+        if (!acc[fecha]) {
+          acc[fecha] = { fecha, total_ventas: 0, total_dinero: 0 };
+        }
+        acc[fecha].total_ventas++;
+        acc[fecha].total_dinero += Number(v.monto);
+        return acc;
+      }, {})
+    ).sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+    const porEmpleado = Object.values(
+      ventas.reduce((acc, v) => {
+        const key = v.empleadoId;
+        if (!acc[key]) {
+          acc[key] = {
+            empleado: v.empleado.nombre,
+            cantidad_servicios: 0,
+            total_ganado: 0
+          };
+        }
+        acc[key].cantidad_servicios++;
+        acc[key].total_ganado += Number(v.monto);
+        return acc;
+      }, {})
+    ).sort((a, b) => b.total_ganado - a.total_ganado);
 
     return {
       fechaInicio,
       fechaFin,
-      total: totalRows[0],
-      porDia: diaRows,
-      porEmpleado: empleadoRows
+      total,
+      porDia,
+      porEmpleado
     };
   },
 
-  // Reporte mensual: totales por día y semana
   async reporteMensual(fechaInicio, fechaFin) {
-    const queryPorDia = `
-      SELECT 
-        fecha,
-        COUNT(*) as total_ventas,
-        SUM(monto) as total_dinero
-      FROM ventas
-      WHERE fecha BETWEEN ? AND ?
-      GROUP BY fecha
-      ORDER BY fecha ASC
-    `;
-    
-    const queryTotal = `
-      SELECT 
-        COUNT(*) as total_ventas,
-        SUM(monto) as total_dinero
-      FROM ventas
-      WHERE fecha BETWEEN ? AND ?
-    `;
+    const ventas = await prisma.venta.findMany({
+      where: {
+        fecha: {
+          gte: new Date(fechaInicio),
+          lte: new Date(fechaFin)
+        }
+      },
+      include: {
+        empleado: { select: { nombre: true } },
+        servicio: { select: { nombre: true } }
+      }
+    });
 
-    const queryPorEmpleado = `
-      SELECT 
-        e.nombre as empleado,
-        COUNT(*) as cantidad_servicios,
-        SUM(v.monto) as total_ganado
-      FROM ventas v
-      INNER JOIN empleados e ON v.empleado_id = e.id
-      WHERE v.fecha BETWEEN ? AND ?
-      GROUP BY v.empleado_id, e.nombre
-      ORDER BY total_ganado DESC
-    `;
+    const total = {
+      total_ventas: ventas.length,
+      total_dinero: ventas.reduce((sum, v) => sum + Number(v.monto), 0)
+    };
 
-    const queryPorServicio = `
-      SELECT 
-        s.nombre as servicio,
-        COUNT(*) as cantidad,
-        SUM(v.monto) as total
-      FROM ventas v
-      INNER JOIN servicios s ON v.servicio_id = s.id
-      WHERE v.fecha BETWEEN ? AND ?
-      GROUP BY v.servicio_id, s.nombre
-      ORDER BY total DESC
-    `;
+    const porDia = Object.values(
+      ventas.reduce((acc, v) => {
+        const fecha = v.fecha.toISOString().split('T')[0];
+        if (!acc[fecha]) {
+          acc[fecha] = { fecha, total_ventas: 0, total_dinero: 0 };
+        }
+        acc[fecha].total_ventas++;
+        acc[fecha].total_dinero += Number(v.monto);
+        return acc;
+      }, {})
+    ).sort((a, b) => a.fecha.localeCompare(b.fecha));
 
-    const [diaRows] = await pool.execute(queryPorDia, [fechaInicio, fechaFin]);
-    const [totalRows] = await pool.execute(queryTotal, [fechaInicio, fechaFin]);
-    const [empleadoRows] = await pool.execute(queryPorEmpleado, [fechaInicio, fechaFin]);
-    const [servicioRows] = await pool.execute(queryPorServicio, [fechaInicio, fechaFin]);
+    const porEmpleado = Object.values(
+      ventas.reduce((acc, v) => {
+        const key = v.empleadoId;
+        if (!acc[key]) {
+          acc[key] = {
+            empleado: v.empleado.nombre,
+            cantidad_servicios: 0,
+            total_ganado: 0
+          };
+        }
+        acc[key].cantidad_servicios++;
+        acc[key].total_ganado += Number(v.monto);
+        return acc;
+      }, {})
+    ).sort((a, b) => b.total_ganado - a.total_ganado);
+
+    const porServicio = Object.values(
+      ventas.reduce((acc, v) => {
+        const key = v.servicioId;
+        if (!acc[key]) {
+          acc[key] = {
+            servicio: v.servicio.nombre,
+            cantidad: 0,
+            total: 0
+          };
+        }
+        acc[key].cantidad++;
+        acc[key].total += Number(v.monto);
+        return acc;
+      }, {})
+    ).sort((a, b) => b.total - a.total);
 
     return {
       fechaInicio,
       fechaFin,
-      total: totalRows[0],
-      porDia: diaRows,
-      porEmpleado: empleadoRows,
-      porServicio: servicioRows
+      total,
+      porDia,
+      porEmpleado,
+      porServicio
     };
   },
 
-  // Verificar si ya existe una venta para una cita
   async existePorCita(citaId) {
-    const query = 'SELECT id FROM ventas WHERE cita_id = ?';
-    const [rows] = await pool.execute(query, [citaId]);
-    return rows.length > 0;
+    const venta = await prisma.venta.findUnique({
+      where: { citaId: parseInt(citaId) }
+    });
+    return !!venta;
   },
 
-  // Eliminar venta por cita (cuando se cancela una cita completada)
   async eliminarPorCita(citaId) {
-    const query = 'DELETE FROM ventas WHERE cita_id = ?';
-    const [result] = await pool.execute(query, [citaId]);
-    return result.affectedRows > 0;
+    await prisma.venta.delete({
+      where: { citaId: parseInt(citaId) }
+    });
+    return true;
   }
 };
 

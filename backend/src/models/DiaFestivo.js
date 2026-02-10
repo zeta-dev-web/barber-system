@@ -1,48 +1,46 @@
-import pool from '../config/dbConfig.js';
+import prisma from '../config/prisma.js';
 
 const DiaFestivo = {
-    // Obtener todos los días festivos
     async obtenerTodos() {
-        const [rows] = await pool.query(
-            'SELECT * FROM dias_festivos ORDER BY fecha'
-        );
-        return rows;
+        return await prisma.diaFestivo.findMany({
+            orderBy: { fecha: 'asc' }
+        });
     },
 
-    // Obtener días festivos futuros
     async obtenerFuturos() {
-        const [rows] = await pool.query(
-            'SELECT * FROM dias_festivos WHERE fecha >= CURDATE() ORDER BY fecha'
-        );
-        return rows;
+        return await prisma.diaFestivo.findMany({
+            where: {
+                fecha: {
+                    gte: new Date()
+                }
+            },
+            orderBy: { fecha: 'asc' }
+        });
     },
 
-    // Verificar si una fecha es festiva
     async esFestivo(fecha) {
-        const [rows] = await pool.query(
-            'SELECT COUNT(*) as total FROM dias_festivos WHERE fecha = ?',
-            [fecha]
-        );
-        return rows[0].total > 0;
+        const count = await prisma.diaFestivo.count({
+            where: { fecha: new Date(fecha) }
+        });
+        return count > 0;
     },
 
-    // Crear día festivo
     async crear(diaFestivo) {
         const { fecha, descripcion } = diaFestivo;
-        const [result] = await pool.query(
-            'INSERT INTO dias_festivos (fecha, descripcion) VALUES (?, ?)',
-            [fecha, descripcion]
-        );
-        return result.insertId;
+        const result = await prisma.diaFestivo.create({
+            data: {
+                fecha: new Date(fecha),
+                descripcion
+            }
+        });
+        return result.id;
     },
 
-    // Eliminar día festivo
     async eliminar(id) {
-        const [result] = await pool.query(
-            'DELETE FROM dias_festivos WHERE id = ?',
-            [id]
-        );
-        return result.affectedRows > 0;
+        await prisma.diaFestivo.delete({
+            where: { id: parseInt(id) }
+        });
+        return true;
     }
 };
 

@@ -17,6 +17,8 @@ const disponibilidadController = {
                 return res.status(400).json({ error: 'Fecha es requerida' });
             }
 
+            console.log('📅 Fecha recibida:', fecha);
+
             // Verificar si es día festivo
             const esFestivo = await DiaFestivo.esFestivo(fecha);
             if (esFestivo) {
@@ -27,9 +29,13 @@ const disponibilidadController = {
                 });
             }
 
-            // Obtener día de la semana
-            const fechaMoment = moment.tz(fecha, timezone);
-            const diaSemana = fechaMoment.format('dddd').toLowerCase();
+            // Obtener día de la semana - parsear fecha directamente
+            const [year, month, day] = fecha.split('-').map(Number);
+            const fechaLocal = new Date(year, month - 1, day);
+            
+            moment.locale('en');
+            const diaIngles = moment(fechaLocal).format('dddd').toLowerCase();
+            moment.locale('es');
             
             // Mapear días en español
             const diasMap = {
@@ -41,7 +47,7 @@ const disponibilidadController = {
                 'saturday': 'sabado',
                 'sunday': 'domingo'
             };
-            const diaEspanol = diasMap[diaSemana];
+            const diaEspanol = diasMap[diaIngles];
 
             // Si se especifica un empleado
             if (empleado_id) {
@@ -106,7 +112,10 @@ async function obtenerDisponibilidadEmpleado(empleadoId, fecha, diaSemana) {
 
     // Obtener horarios del empleado para ese día
     const horarios = await Horario.obtenerPorEmpleado(empleadoId);
-    const horarioDia = horarios.find(h => h.dia_semana === diaSemana);
+    console.log('🔍 Horarios del empleado:', empleadoId, horarios);
+    console.log('🔍 Día buscado:', diaSemana);
+    const horarioDia = horarios.find(h => h.diaSemana === diaSemana);
+    console.log('🔍 Horario encontrado:', horarioDia);
 
     if (!horarioDia) {
         return {

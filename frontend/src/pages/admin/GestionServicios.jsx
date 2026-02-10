@@ -143,7 +143,7 @@ function GestionServicios() {
                 />
               </div>
               <div className="form-group">
-                <label>Precio (COP) *</label>
+                <label>Precio *</label>
                 <input
                   type="number"
                   name="precio"

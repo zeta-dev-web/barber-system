@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { serviciosAPI } from '../services/api';
+import ThemeToggle from '../components/ThemeToggle';
 
 function Home() {
   const [servicios, setServicios] = useState([]);
@@ -27,10 +28,11 @@ function Home() {
       <nav className="navbar">
         <div className="navbar-content">
           <h1>HIGHBURY BARBER</h1>
-          <nav>
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
             <Link to="/" className="active">Inicio</Link>
             <Link to="/reservar">Reservar Cita</Link>
             <Link to="/admin/login">Administración</Link>
+            <ThemeToggle />
           </nav>
         </div>
       </nav>

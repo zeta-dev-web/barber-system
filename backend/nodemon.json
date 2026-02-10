@@ -1,0 +1,14 @@
+{
+  "ignore": [
+    "whatsapp-session/**",
+    ".wwebjs_auth/**",
+    ".wwebjs_cache/**",
+    "node_modules/**",
+    "uploads/**"
+  ],
+  "watch": [
+    "src/**",
+    "index.js",
+    ".env"
+  ]
+}

@@ -1,41 +1,47 @@
-import pool from '../config/dbConfig.js';
+import prisma from '../config/prisma.js';
 import bcrypt from 'bcrypt';
 
 const Admin = {
-    // Obtener administrador por usuario
     async obtenerPorUsuario(usuario) {
-        const [rows] = await pool.query(
-            'SELECT * FROM administradores WHERE usuario = ?',
-            [usuario]
-        );
-        return rows[0];
+        return await prisma.administrador.findUnique({
+            where: { usuario }
+        });
     },
 
-    // Crear administrador
     async crear(admin) {
         const { usuario, password, nombre, email } = admin;
         const hashedPassword = await bcrypt.hash(password, 10);
         
-        const [result] = await pool.query(
-            'INSERT INTO administradores (usuario, password, nombre, email) VALUES (?, ?, ?, ?)',
-            [usuario, hashedPassword, nombre, email]
-        );
-        return result.insertId;
+        const result = await prisma.administrador.create({
+            data: {
+                usuario,
+                password: hashedPassword,
+                nombre,
+                email
+            }
+        });
+        return result.id;
     },
 
-    // Verificar contraseña
     async verificarPassword(password, hashedPassword) {
         return await bcrypt.compare(password, hashedPassword);
     },
 
-    // Actualizar contraseña
     async actualizarPassword(id, nuevaPassword) {
         const hashedPassword = await bcrypt.hash(nuevaPassword, 10);
-        const [result] = await pool.query(
-            'UPDATE administradores SET password = ? WHERE id = ?',
-            [hashedPassword, id]
-        );
-        return result.affectedRows > 0;
+        await prisma.administrador.update({
+            where: { id },
+            data: { password: hashedPassword }
+        });
+        return true;
+    },
+
+    async actualizarConfiguracion(id, config) {
+        await prisma.administrador.update({
+            where: { id },
+            data: config
+        });
+        return true;
     }
 };
 

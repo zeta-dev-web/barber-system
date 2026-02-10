@@ -17,6 +17,7 @@ import adminRoutes from './src/routes/adminRoutes.js';
 import horariosRoutes from './src/routes/horariosRoutes.js';
 import bloqueosRoutes from './src/routes/bloqueosRoutes.js';
 import reportesRoutes from './src/routes/reportesRoutes.js';
+import whatsappRoutes from './src/routes/whatsappRoutes.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -40,6 +41,7 @@ app.use('/api/servicios', serviciosRoutes);
 app.use('/api/empleados', empleadosRoutes);
 app.use('/api/citas', citasRoutes);
 app.use('/api/disponibilidad', disponibilidadRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 // Rutas administrativas
 app.use('/api/admin', adminRoutes);

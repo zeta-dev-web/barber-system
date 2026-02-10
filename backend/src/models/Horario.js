@@ -1,64 +1,86 @@
-import pool from '../config/dbConfig.js';
+import prisma from '../config/prisma.js';
 
 const Horario = {
-    // Obtener todos los horarios
     async obtenerTodos() {
-        const [rows] = await pool.query(`
-            SELECT h.*, e.nombre as empleado_nombre
-            FROM horarios h
-            INNER JOIN empleados e ON h.empleado_id = e.id
-            WHERE h.activo = TRUE
-            ORDER BY e.nombre, FIELD(h.dia_semana, 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo')
-        `);
-        return rows;
+        return await prisma.horario.findMany({
+            where: { activo: true },
+            include: {
+                empleado: {
+                    select: { nombre: true }
+                }
+            },
+            orderBy: [
+                { empleado: { nombre: 'asc' } },
+                { diaSemana: 'asc' }
+            ]
+        });
     },
 
-    // Obtener un horario por ID
     async obtenerPorId(id) {
-        const [rows] = await pool.query(
-            'SELECT h.*, e.nombre as empleado_nombre FROM horarios h INNER JOIN empleados e ON h.empleado_id = e.id WHERE h.id = ?',
-            [id]
-        );
-        return rows[0];
+        return await prisma.horario.findUnique({
+            where: { id: parseInt(id) },
+            include: {
+                empleado: {
+                    select: { nombre: true }
+                }
+            }
+        });
     },
 
-    // Obtener horarios por empleado
     async obtenerPorEmpleado(empleadoId) {
-        const [rows] = await pool.query(
-            `SELECT * FROM horarios WHERE empleado_id = ? AND activo = TRUE 
-            ORDER BY FIELD(dia_semana, 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo')`,
-            [empleadoId]
-        );
-        return rows;
+        return await prisma.horario.findMany({
+            where: { 
+                empleadoId: parseInt(empleadoId),
+                activo: true 
+            },
+            orderBy: { diaSemana: 'asc' }
+        });
     },
 
-    // Crear horario
     async crear(horario) {
         const { empleado_id, dia_semana, hora_inicio, hora_fin } = horario;
-        const [result] = await pool.query(
-            'INSERT INTO horarios (empleado_id, dia_semana, hora_inicio, hora_fin) VALUES (?, ?, ?, ?)',
-            [empleado_id, dia_semana, hora_inicio, hora_fin]
-        );
-        return result.insertId;
+        const result = await prisma.horario.upsert({
+            where: {
+                unique_empleado_dia: {
+                    empleadoId: parseInt(empleado_id),
+                    diaSemana: dia_semana
+                }
+            },
+            update: {
+                horaInicio: hora_inicio,
+                horaFin: hora_fin,
+                activo: true
+            },
+            create: {
+                empleadoId: parseInt(empleado_id),
+                diaSemana: dia_semana,
+                horaInicio: hora_inicio,
+                horaFin: hora_fin
+            }
+        });
+        return result.id;
     },
 
-    // Actualizar horario
     async actualizar(id, horario) {
         const { dia_semana, hora_inicio, hora_fin, activo } = horario;
-        const [result] = await pool.query(
-            'UPDATE horarios SET dia_semana = ?, hora_inicio = ?, hora_fin = ?, activo = ? WHERE id = ?',
-            [dia_semana, hora_inicio, hora_fin, activo, id]
-        );
-        return result.affectedRows > 0;
+        await prisma.horario.update({
+            where: { id: parseInt(id) },
+            data: {
+                diaSemana: dia_semana,
+                horaInicio: hora_inicio,
+                horaFin: hora_fin,
+                activo
+            }
+        });
+        return true;
     },
 
-    // Eliminar horario
     async eliminar(id) {
-        const [result] = await pool.query(
-            'UPDATE horarios SET activo = FALSE WHERE id = ?',
-            [id]
-        );
-        return result.affectedRows > 0;
+        await prisma.horario.update({
+            where: { id: parseInt(id) },
+            data: { activo: false }
+        });
+        return true;
     }
 };
 

@@ -1,67 +1,57 @@
-import pool from '../config/dbConfig.js';
+import prisma from '../config/prisma.js';
 
 const Servicio = {
-    // Obtener todos los servicios activos
     async obtenerTodos() {
-        const [rows] = await pool.query(
-            'SELECT id, nombre, descripcion, duracion, precio FROM servicios WHERE activo = TRUE ORDER BY nombre'
-        );
-        return rows;
+        return await prisma.servicio.findMany({
+            where: { activo: true },
+            select: { id: true, nombre: true, descripcion: true, duracion: true, precio: true },
+            orderBy: { nombre: 'asc' }
+        });
     },
 
-    // Obtener todos los servicios (incluidos inactivos) para admin
     async obtenerTodosAdmin() {
-        const [rows] = await pool.query(
-            'SELECT * FROM servicios ORDER BY nombre'
-        );
-        return rows;
+        return await prisma.servicio.findMany({
+            orderBy: { nombre: 'asc' }
+        });
     },
 
-    // Obtener servicio por ID
     async obtenerPorId(id) {
-        const [rows] = await pool.query(
-            'SELECT * FROM servicios WHERE id = ?',
-            [id]
-        );
-        return rows[0];
+        return await prisma.servicio.findUnique({
+            where: { id: parseInt(id) }
+        });
     },
 
-    // Crear nuevo servicio
     async crear(servicio) {
         const { nombre, descripcion, precio } = servicio;
-        const [result] = await pool.query(
-            'INSERT INTO servicios (nombre, descripcion, duracion, precio) VALUES (?, ?, 60, ?)',
-            [nombre, descripcion, precio]
-        );
-        return result.insertId;
+        const result = await prisma.servicio.create({
+            data: { nombre, descripcion, duracion: 60, precio }
+        });
+        return result.id;
     },
 
-    // Actualizar servicio
     async actualizar(id, servicio) {
         const { nombre, descripcion, precio, activo } = servicio;
-        const [result] = await pool.query(
-            'UPDATE servicios SET nombre = ?, descripcion = ?, precio = ?, activo = ? WHERE id = ?',
-            [nombre, descripcion, precio, activo, id]
-        );
-        return result.affectedRows > 0;
+        await prisma.servicio.update({
+            where: { id: parseInt(id) },
+            data: { nombre, descripcion, precio, activo }
+        });
+        return true;
     },
 
-    // Eliminar servicio (soft delete)
     async eliminar(id) {
-        const [result] = await pool.query(
-            'UPDATE servicios SET activo = FALSE WHERE id = ?',
-            [id]
-        );
-        return result.affectedRows > 0;
+        await prisma.servicio.update({
+            where: { id: parseInt(id) },
+            data: { activo: false }
+        });
+        return true;
     },
 
-    // Activar servicio
     async activar(id) {
-        const [result] = await pool.query(
-            'UPDATE servicios SET activo = TRUE WHERE id = ?',
-            [id]
-        );
-        return result.affectedRows > 0;
+        await prisma.servicio.update({
+            where: { id: parseInt(id) },
+            data: { activo: true }
+        });
+        return true;
     }
 };
 

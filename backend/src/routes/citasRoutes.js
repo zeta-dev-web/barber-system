@@ -7,7 +7,6 @@ const router = express.Router();
 // Validaciones para crear cita
 const validacionCrearCita = [
     body('cliente_nombre').notEmpty().withMessage('Nombre del cliente es requerido'),
-    body('cliente_cedula').notEmpty().withMessage('Cédula del cliente es requerida'),
     body('cliente_email').isEmail().withMessage('Email inválido'),
     body('cliente_telefono').notEmpty().withMessage('Teléfono es requerido'),
     body('servicio_id').isInt().withMessage('ID de servicio inválido'),

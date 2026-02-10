@@ -1,111 +1,100 @@
-import pool from '../config/dbConfig.js';
+import prisma from '../config/prisma.js';
 
 const Cita = {
-    // Obtener todas las citas con información relacionada
     async obtenerTodas() {
-        const [rows] = await pool.query(`
-            SELECT 
-                c.*,
-                s.nombre as servicio_nombre,
-                s.precio as servicio_precio,
-                e.nombre as empleado_nombre,
-                CASE 
-                    WHEN c.fecha >= CURDATE() THEN 0
-                    ELSE 1
-                END as es_pasada
-            FROM citas c
-            INNER JOIN servicios s ON c.servicio_id = s.id
-            INNER JOIN empleados e ON c.empleado_id = e.id
-            ORDER BY 
-                es_pasada ASC,
-                c.fecha ASC, 
-                c.hora ASC
-        `);
-        return rows;
+        const citas = await prisma.cita.findMany({
+            include: {
+                servicio: { select: { nombre: true, precio: true } },
+                empleado: { select: { nombre: true } }
+            },
+            orderBy: [{ fecha: 'asc' }, { hora: 'asc' }]
+        });
+        return citas.map(c => ({
+            ...c,
+            servicioNombre: c.servicio.nombre,
+            servicioPrecio: c.servicio.precio,
+            empleadoNombre: c.empleado.nombre
+        }));
     },
 
-    // Obtener citas por estado
     async obtenerPorEstado(estado) {
-        const [rows] = await pool.query(`
-            SELECT 
-                c.*,
-                s.nombre as servicio_nombre,
-                s.precio as servicio_precio,
-                e.nombre as empleado_nombre,
-                CASE 
-                    WHEN c.fecha >= CURDATE() THEN 0
-                    ELSE 1
-                END as es_pasada
-            FROM citas c
-            INNER JOIN servicios s ON c.servicio_id = s.id
-            INNER JOIN empleados e ON c.empleado_id = e.id
-            WHERE c.estado = ?
-            ORDER BY 
-                es_pasada ASC,
-                c.fecha ASC, 
-                c.hora ASC
-        `, [estado]);
-        return rows;
+        const citas = await prisma.cita.findMany({
+            where: { estado },
+            include: {
+                servicio: { select: { nombre: true, precio: true } },
+                empleado: { select: { nombre: true } }
+            },
+            orderBy: [{ fecha: 'asc' }, { hora: 'asc' }]
+        });
+        return citas.map(c => ({
+            ...c,
+            servicioNombre: c.servicio.nombre,
+            servicioPrecio: c.servicio.precio,
+            empleadoNombre: c.empleado.nombre
+        }));
     },
 
-    // Obtener cita por ID
     async obtenerPorId(id) {
-        const [rows] = await pool.query(`
-            SELECT 
-                c.*,
-                s.nombre as servicio_nombre,
-                s.descripcion as servicio_descripcion,
-                s.precio as servicio_precio,
-                e.nombre as empleado_nombre,
-                e.foto as empleado_foto
-            FROM citas c
-            INNER JOIN servicios s ON c.servicio_id = s.id
-            INNER JOIN empleados e ON c.empleado_id = e.id
-            WHERE c.id = ?
-        `, [id]);
-        return rows[0];
+        const cita = await prisma.cita.findUnique({
+            where: { id: parseInt(id) },
+            include: {
+                servicio: { select: { nombre: true, descripcion: true, precio: true } },
+                empleado: { select: { nombre: true, foto: true } }
+            }
+        });
+        if (!cita) return null;
+        return {
+            ...cita,
+            servicioNombre: cita.servicio.nombre,
+            servicioDescripcion: cita.servicio.descripcion,
+            servicioPrecio: cita.servicio.precio,
+            empleadoNombre: cita.empleado.nombre,
+            empleadoFoto: cita.empleado.foto
+        };
     },
 
-    // Obtener citas por fecha
     async obtenerPorFecha(fecha) {
-        const [rows] = await pool.query(`
-            SELECT 
-                c.*,
-                s.nombre as servicio_nombre,
-                e.nombre as empleado_nombre
-            FROM citas c
-            INNER JOIN servicios s ON c.servicio_id = s.id
-            INNER JOIN empleados e ON c.empleado_id = e.id
-            WHERE c.fecha = ?
-            ORDER BY c.hora
-        `, [fecha]);
-        return rows;
+        const citas = await prisma.cita.findMany({
+            where: { fecha: new Date(fecha) },
+            include: {
+                servicio: { select: { nombre: true } },
+                empleado: { select: { nombre: true } }
+            },
+            orderBy: { hora: 'asc' }
+        });
+        return citas.map(c => ({
+            ...c,
+            servicioNombre: c.servicio.nombre,
+            empleadoNombre: c.empleado.nombre
+        }));
     },
 
-    // Obtener citas por empleado y fecha
     async obtenerPorEmpleadoYFecha(empleadoId, fecha) {
-        const [rows] = await pool.query(`
-            SELECT * FROM citas 
-            WHERE empleado_id = ? AND fecha = ? AND estado != 'cancelada'
-            ORDER BY hora
-        `, [empleadoId, fecha]);
-        return rows;
+        return await prisma.cita.findMany({
+            where: {
+                empleadoId: parseInt(empleadoId),
+                fecha: new Date(fecha),
+                estado: { not: 'cancelada' }
+            },
+            orderBy: { hora: 'asc' }
+        });
     },
 
-    // Verificar si un horario está disponible
     async verificarDisponibilidad(empleadoId, fecha, hora) {
-        const [rows] = await pool.query(`
-            SELECT COUNT(*) as total FROM citas 
-            WHERE empleado_id = ? AND fecha = ? AND hora = ? AND estado != 'cancelada'
-        `, [empleadoId, fecha, hora]);
-        return rows[0].total === 0;
+        const count = await prisma.cita.count({
+            where: {
+                empleadoId: parseInt(empleadoId),
+                fecha: new Date(fecha),
+                hora,
+                estado: { not: 'cancelada' }
+            }
+        });
+        return count === 0;
     },
 
-    // Crear nueva cita
     async crear(cita) {
         const { 
             cliente_nombre, 
-            cliente_cedula, 
             cliente_email, 
             cliente_telefono, 
             servicio_id, 
@@ -114,95 +103,133 @@ const Cita = {
             hora 
         } = cita;
         
-        const [result] = await pool.query(
-            `INSERT INTO citas 
-            (cliente_nombre, cliente_cedula, cliente_email, cliente_telefono, 
-             servicio_id, empleado_id, fecha, hora, estado) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendiente')`,
-            [cliente_nombre, cliente_cedula, cliente_email, cliente_telefono, 
-             servicio_id, empleado_id, fecha, hora]
-        );
-        return result.insertId;
+        // Generar token único para confirmación
+        const crypto = await import('crypto');
+        const tokenConfirmacion = crypto.randomBytes(32).toString('hex');
+        
+        const result = await prisma.cita.create({
+            data: {
+                clienteNombre: cliente_nombre,
+                clienteEmail: cliente_email,
+                clienteTelefono: cliente_telefono,
+                servicio: { connect: { id: parseInt(servicio_id) } },
+                empleado: { connect: { id: parseInt(empleado_id) } },
+                fecha: new Date(fecha),
+                hora,
+                estado: 'pendiente',
+                tokenConfirmacion
+            }
+        });
+        return result.id;
     },
 
-    // Actualizar estado de cita
     async actualizarEstado(id, estado) {
-        const [result] = await pool.query(
-            'UPDATE citas SET estado = ? WHERE id = ?',
-            [estado, id]
-        );
-        return result.affectedRows > 0;
+        await prisma.cita.update({
+            where: { id: parseInt(id) },
+            data: { estado }
+        });
+        return true;
     },
 
-    // Marcar email de confirmación como enviado
     async marcarEmailConfirmacionEnviado(id) {
-        const [result] = await pool.query(
-            'UPDATE citas SET email_confirmacion_enviado = TRUE WHERE id = ?',
-            [id]
-        );
-        return result.affectedRows > 0;
+        await prisma.cita.update({
+            where: { id: parseInt(id) },
+            data: { emailConfirmacionEnviado: true }
+        });
+        return true;
     },
 
-    // Marcar recordatorio como enviado
     async marcarRecordatorioEnviado(id) {
-        const [result] = await pool.query(
-            'UPDATE citas SET recordatorio_enviado = TRUE WHERE id = ?',
-            [id]
-        );
-        return result.affectedRows > 0;
+        await prisma.cita.update({
+            where: { id: parseInt(id) },
+            data: { recordatorioEnviado: true }
+        });
+        return true;
     },
 
-    // Marcar email de recibo como enviado
     async marcarEmailReciboEnviado(id) {
-        const [result] = await pool.query(
-            'UPDATE citas SET email_recibo_enviado = TRUE WHERE id = ?',
-            [id]
-        );
-        return result.affectedRows > 0;
+        await prisma.cita.update({
+            where: { id: parseInt(id) },
+            data: { emailReciboEnviado: true }
+        });
+        return true;
     },
 
-    // Obtener citas próximas para recordatorios (3 horas antes)
     async obtenerCitasParaRecordatorio() {
-        const [rows] = await pool.query(`
-            SELECT 
-                c.*,
-                s.nombre as servicio_nombre,
-                e.nombre as empleado_nombre
-            FROM citas c
-            INNER JOIN servicios s ON c.servicio_id = s.id
-            INNER JOIN empleados e ON c.empleado_id = e.id
-            WHERE c.estado = 'pendiente' 
-            AND c.recordatorio_enviado = FALSE
-            AND TIMESTAMP(c.fecha, c.hora) BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 4 HOUR)
-            AND TIMESTAMP(c.fecha, c.hora) >= DATE_ADD(NOW(), INTERVAL 3 HOUR)
-        `);
-        return rows;
+        const now = new Date();
+        const threeHoursLater = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+        const fourHoursLater = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+
+        const citas = await prisma.cita.findMany({
+            where: {
+                estado: 'pendiente',
+                recordatorioEnviado: false,
+                fecha: { gte: now, lte: fourHoursLater }
+            },
+            include: {
+                servicio: { select: { nombre: true } },
+                empleado: { select: { nombre: true } }
+            }
+        });
+
+        return citas.map(c => ({
+            ...c,
+            servicioNombre: c.servicio.nombre,
+            empleadoNombre: c.empleado.nombre
+        }));
     },
 
-    // Cancelar cita
     async cancelar(id) {
         return await this.actualizarEstado(id, 'cancelada');
     },
 
-    // Completar cita
     async completar(id) {
         return await this.actualizarEstado(id, 'completada');
     },
 
-    // Confirmar cita
     async confirmar(id) {
         return await this.actualizarEstado(id, 'confirmada');
     },
 
-    // Cancelar automáticamente citas vencidas (más de 3 horas después de la hora programada)
     async cancelarCitasVencidas() {
-        const [result] = await pool.query(`
-            UPDATE citas 
-            SET estado = 'cancelada'
-            WHERE estado IN ('pendiente', 'confirmada')
-            AND TIMESTAMP(fecha, hora) < DATE_SUB(NOW(), INTERVAL 3 HOUR)
-        `);
-        return result.affectedRows;
+        const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
+
+        const result = await prisma.cita.updateMany({
+            where: {
+                estado: { in: ['pendiente', 'confirmada'] },
+                fecha: { lt: threeHoursAgo }
+            },
+            data: { estado: 'cancelada' }
+        });
+        return result.count;
+    },
+
+    async obtenerPorToken(token) {
+        const cita = await prisma.cita.findUnique({
+            where: { tokenConfirmacion: token },
+            include: {
+                servicio: { select: { nombre: true, precio: true } },
+                empleado: { select: { nombre: true } }
+            }
+        });
+        if (!cita) return null;
+        return {
+            ...cita,
+            servicioNombre: cita.servicio.nombre,
+            servicioPrecio: cita.servicio.precio,
+            empleadoNombre: cita.empleado.nombre
+        };
+    },
+
+    async cancelarConMotivo(id, motivo) {
+        await prisma.cita.update({
+            where: { id: parseInt(id) },
+            data: { 
+                estado: 'cancelada',
+                motivoCancelacion: motivo
+            }
+        });
+        return true;
     }
 };
 

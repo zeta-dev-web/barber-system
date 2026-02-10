@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { reportesAPI } from '../../services/api';
+import { reportesAPI, adminAPI } from '../../services/api';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 function GestionReportes() {
@@ -7,6 +7,8 @@ function GestionReportes() {
   const [reporteData, setReporteData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState('');
+  const [empleados, setEmpleados] = useState([]);
+  const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState(''); // '' = todos
   
   // Fechas
   const hoy = new Date().toISOString().split('T')[0];
@@ -17,6 +19,17 @@ function GestionReportes() {
   const [fechaFinMensual, setFechaFinMensual] = useState(hoy);
 
   useEffect(() => {
+    // Cargar empleados
+    const cargarEmpleados = async () => {
+      try {
+        const response = await adminAPI.obtenerEmpleados();
+        setEmpleados(response.data);
+      } catch (error) {
+        console.error('Error al cargar empleados:', error);
+      }
+    };
+    cargarEmpleados();
+
     // Calcular semana actual
     const fecha = new Date();
     const primerDia = new Date(fecha.setDate(fecha.getDate() - fecha.getDay() + 1));
@@ -37,13 +50,14 @@ function GestionReportes() {
       setLoading(true);
       setMensaje('');
       let response;
+      const empId = empleadoSeleccionado || undefined;
 
       if (tipoReporte === 'diario') {
-        response = await reportesAPI.obtenerReporteDiario(fechaDiaria);
+        response = await reportesAPI.obtenerReporteDiario(fechaDiaria, empId);
       } else if (tipoReporte === 'semanal') {
-        response = await reportesAPI.obtenerReporteSemanal(fechaInicioSemanal, fechaFinSemanal);
+        response = await reportesAPI.obtenerReporteSemanal(fechaInicioSemanal, fechaFinSemanal, empId);
       } else if (tipoReporte === 'mensual') {
-        response = await reportesAPI.obtenerReporteMensual(fechaInicioMensual, fechaFinMensual);
+        response = await reportesAPI.obtenerReporteMensual(fechaInicioMensual, fechaFinMensual, empId);
       }
 
       setReporteData(response.data);
@@ -60,16 +74,17 @@ function GestionReportes() {
       setMensaje('Generando PDF...');
       let response;
       let filename;
+      const empId = empleadoSeleccionado || undefined;
 
       if (tipoReporte === 'diario') {
-        response = await reportesAPI.descargarPDFDiario(fechaDiaria);
-        filename = `reporte-diario-${fechaDiaria}.pdf`;
+        response = await reportesAPI.descargarPDFDiario(fechaDiaria, empId);
+        filename = `reporte-diario-${fechaDiaria}${empId ? `-emp${empId}` : ''}.pdf`;
       } else if (tipoReporte === 'semanal') {
-        response = await reportesAPI.descargarPDFSemanal(fechaInicioSemanal, fechaFinSemanal);
-        filename = `reporte-semanal-${fechaInicioSemanal}-${fechaFinSemanal}.pdf`;
+        response = await reportesAPI.descargarPDFSemanal(fechaInicioSemanal, fechaFinSemanal, empId);
+        filename = `reporte-semanal-${fechaInicioSemanal}-${fechaFinSemanal}${empId ? `-emp${empId}` : ''}.pdf`;
       } else if (tipoReporte === 'mensual') {
-        response = await reportesAPI.descargarPDFMensual(fechaInicioMensual, fechaFinMensual);
-        filename = `reporte-mensual-${fechaInicioMensual}-${fechaFinMensual}.pdf`;
+        response = await reportesAPI.descargarPDFMensual(fechaInicioMensual, fechaFinMensual, empId);
+        filename = `reporte-mensual-${fechaInicioMensual}-${fechaFinMensual}${empId ? `-emp${empId}` : ''}.pdf`;
       }
 
       // Crear blob y descargar
@@ -231,6 +246,31 @@ function GestionReportes() {
       <div className="card" style={{ marginBottom: '2rem' }}>
         <h3 style={{ marginBottom: '1rem' }}>Seleccionar Período</h3>
         
+        {/* Selector de Empleado */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--neutral-silver)' }}>
+            Filtrar por Empleado (opcional):
+          </label>
+          <select
+            value={empleadoSeleccionado}
+            onChange={(e) => setEmpleadoSeleccionado(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '0.8rem',
+              background: 'var(--neutral-charcoal)',
+              border: '1px solid var(--neutral-gray)',
+              borderRadius: '4px',
+              color: 'var(--neutral-light)',
+              fontSize: '1rem'
+            }}
+          >
+            <option value="">Todos los empleados</option>
+            {empleados.map(emp => (
+              <option key={emp.id} value={emp.id}>{emp.nombre}</option>
+            ))}
+          </select>
+        </div>
+        
         {tipoReporte === 'diario' && (
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
             <div style={{ flex: 1 }}>
@@ -366,9 +406,6 @@ function GestionReportes() {
               <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>
                 {formatearMoneda(reporteData.total?.total_dinero)}
               </div>
-              <div style={{ fontSize: '0.85rem', marginTop: '0.5rem', opacity: 0.8 }}>
-                COP
-              </div>
             </div>
             
             <div className="card" style={{ background: 'var(--neutral-charcoal)' }}>
@@ -388,21 +425,25 @@ function GestionReportes() {
                   {formatearMoneda((reporteData.total?.total_dinero || 0) / reporteData.porDia.length)}
                 </div>
                 <div style={{ fontSize: '0.85rem', marginTop: '0.5rem', color: 'var(--neutral-silver)' }}>
-                  COP/día
+                  por día
                 </div>
               </div>
             )}
           </div>
 
+          {/* Botón de descarga PDF para reportes semanales y mensuales */}
+          {(tipoReporte === 'semanal' || tipoReporte === 'mensual') && (
+            <div style={{ marginBottom: '2rem', textAlign: 'right' }}>
+              <button onClick={descargarPDF} className="btn btn-primary" style={{ padding: '1rem 2rem' }}>
+                📄 Descargar Reporte en PDF
+              </button>
+            </div>
+          )}
+
           {/* Gráfica de ingresos por día (solo semanal y mensual) */}
           {(tipoReporte === 'semanal' || tipoReporte === 'mensual') && reporteData.porDia && reporteData.porDia.length > 0 && (
             <div className="card" style={{ marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h3>Ingresos por Día</h3>
-                <button onClick={descargarPDF} className="btn btn-secondary">
-                  📄 Descargar PDF
-                </button>
-              </div>
+              <h3 style={{ marginBottom: '1.5rem' }}>Ingresos por Día</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={reporteData.porDia.map(dia => ({
                   ...dia,

@@ -1,93 +1,201 @@
-import twilioClient from '../config/twilioConfig.js';
+import { whatsappClient, isReady } from '../config/whatsappConfig.js';
 import moment from 'moment-timezone';
 
+moment.locale('es');
 const timezone = process.env.TIMEZONE || 'America/Bogota';
-const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER;
-const barberiaWhatsAppNumber = process.env.BARBERIA_WHATSAPP_NUMBER;
 
 export async function enviarRecordatorioWhatsApp(cita) {
-    if (!twilioClient) {
-        console.warn('Twilio no está configurado. No se puede enviar WhatsApp.');
+    if (!whatsappClient || !isReady) {
+        console.warn('⚠️ WhatsApp no está conectado');
         return null;
     }
 
-    const fechaFormateada = moment.tz(cita.fecha, timezone).format('dddd, D [de] MMMM');
-    const horaFormateada = moment.tz(`${cita.fecha} ${cita.hora}`, timezone).format('h:mm A');
+    const fechaFormateada = moment(cita.fecha).format('dddd, D [de] MMMM');
+    const horaFormateada = moment(cita.hora, 'HH:mm:ss').format('h:mm A');
 
-    const mensaje = `
-🔔 *Recordatorio de Cita - Barbería Elite*
+    const mensaje = `🔔 *Recordatorio de Cita - Barbería Elite*
 
-Hola *${cita.cliente_nombre}*! 👋
+Hola *${cita.clienteNombre}*! 👋
 
 Te recordamos que tienes una cita programada:
 
 📅 *Fecha:* ${fechaFormateada}
 🕐 *Hora:* ${horaFormateada}
-✂️ *Servicio:* ${cita.servicio_nombre}
-👤 *Barbero:* ${cita.empleado_nombre}
+✂️ *Servicio:* ${cita.servicioNombre}
+👤 *Barbero:* ${cita.empleadoNombre}
 
 ¿Confirmas tu asistencia? 
 Por favor responde a este mensaje para confirmar o si necesitas cancelar.
 
-📍 Barbería Elite - Bogotá
-    `.trim();
+📍 Barbería Elite`;
 
     try {
-        // Formatear número de teléfono del cliente
-        let numeroCliente = cita.cliente_telefono.replace(/\D/g, '');
-        if (!numeroCliente.startsWith('57')) {
-            numeroCliente = '57' + numeroCliente;
-        }
+        const numeroCliente = cita.clienteTelefono.replace(/\D/g, '');
+        const jid = numeroCliente + '@s.whatsapp.net';
 
-        const message = await twilioClient.messages.create({
-            body: mensaje,
-            from: twilioWhatsAppNumber,
-            to: `whatsapp:+${numeroCliente}`
-        });
-
-        console.log(`✅ Recordatorio WhatsApp enviado a ${cita.cliente_nombre} (${cita.cliente_telefono})`);
-        return message;
+        await whatsappClient.sendMessage(jid, { text: mensaje });
+        console.log(`✅ Recordatorio WhatsApp enviado a ${cita.clienteNombre} (${cita.clienteTelefono})`);
+        return true;
     } catch (error) {
-        console.error('Error al enviar WhatsApp:', error.message);
+        console.error('❌ Error al enviar WhatsApp:', error.message);
         throw error;
     }
 }
 
 export async function notificarAdminNuevaCita(cita) {
-    if (!twilioClient || !barberiaWhatsAppNumber) {
-        console.warn('Twilio no está configurado para notificaciones admin.');
+    if (!whatsappClient || !isReady) {
+        console.warn('⚠️ WhatsApp no está conectado');
         return null;
     }
 
-    const fechaFormateada = moment.tz(cita.fecha, timezone).format('dddd, D [de] MMMM');
-    const horaFormateada = moment.tz(`${cita.fecha} ${cita.hora}`, timezone).format('h:mm A');
+    // Obtener número del admin desde la base de datos
+    const prisma = (await import('../config/prisma.js')).default;
+    const admin = await prisma.administrador.findFirst();
+    const barberiaNumber = admin?.whatsappNumero || process.env.BARBERIA_WHATSAPP_NUMBER;
+    
+    if (!barberiaNumber) {
+        console.warn('⚠️ Número de WhatsApp del admin no configurado');
+        return null;
+    }
 
-    const mensaje = `
-📝 *Nueva Cita Agendada*
+    const fechaFormateada = moment(cita.fecha).format('dddd, D [de] MMMM');
+    const horaFormateada = moment(cita.hora, 'HH:mm:ss').format('h:mm A');
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
 
-Cliente: *${cita.cliente_nombre}*
-Teléfono: ${cita.cliente_telefono}
+    const mensaje = `📝 *Nueva Cita Agendada*
+
+Cliente: *${cita.clienteNombre}*
+Teléfono: ${cita.clienteTelefono}
 Fecha: ${fechaFormateada}
 Hora: ${horaFormateada}
-Servicio: ${cita.servicio_nombre}
-Barbero: ${cita.empleado_nombre}
-    `.trim();
+Servicio: ${cita.servicioNombre}
+Barbero: ${cita.empleadoNombre}
+
+✅ Confirmar: ${backendUrl}/api/whatsapp/confirmar/${cita.tokenConfirmacion}
+❌ Cancelar: ${backendUrl}/api/whatsapp/cancelar/${cita.tokenConfirmacion}`;
 
     try {
-        let numeroAdmin = barberiaWhatsAppNumber.replace(/\D/g, '');
-        if (!numeroAdmin.startsWith('57')) {
-            numeroAdmin = '57' + numeroAdmin;
-        }
+        const numeroAdmin = barberiaNumber.replace(/\D/g, '');
+        const jid = numeroAdmin + '@s.whatsapp.net';
 
-        const message = await twilioClient.messages.create({
-            body: mensaje,
-            from: twilioWhatsAppNumber,
-            to: `whatsapp:+${numeroAdmin}`
-        });
-
-        return message;
+        await whatsappClient.sendMessage(jid, { text: mensaje });
+        return true;
     } catch (error) {
-        console.error('Error al notificar admin:', error.message);
+        console.error('❌ Error al notificar admin:', error.message);
+        throw error;
+    }
+}
+
+export async function enviarConfirmacionCliente(cita) {
+    if (!whatsappClient || !isReady) {
+        console.warn('⚠️ WhatsApp no está conectado');
+        return null;
+    }
+
+    const fechaFormateada = moment(cita.fecha).format('dddd, D [de] MMMM');
+    const horaFormateada = moment(cita.hora, 'HH:mm:ss').format('h:mm A');
+
+    const mensaje = `✅ *Cita Confirmada - Barbería Elite*
+
+Hola *${cita.clienteNombre}*! 👋
+
+Tu cita ha sido agendada exitosamente:
+
+📅 *Fecha:* ${fechaFormateada}
+🕐 *Hora:* ${horaFormateada}
+✂️ *Servicio:* ${cita.servicioNombre}
+👤 *Barbero:* ${cita.empleadoNombre}
+💰 *Precio:* $${cita.servicioPrecio}
+
+Te enviaremos un recordatorio 3 horas antes de tu cita.
+
+📍 Barbería Elite
+¡Te esperamos!`;
+
+    try {
+        const numeroCliente = cita.clienteTelefono.replace(/\D/g, '');
+        const jid = numeroCliente + '@s.whatsapp.net';
+
+        await whatsappClient.sendMessage(jid, { text: mensaje });
+        console.log(`✅ Confirmación WhatsApp enviada a ${cita.clienteNombre} (${cita.clienteTelefono})`);
+        return true;
+    } catch (error) {
+        console.error('❌ Error al enviar confirmación:', error.message);
+        throw error;
+    }
+}
+
+export async function enviarNotificacionCancelacion(cita, motivo) {
+    if (!whatsappClient || !isReady) {
+        console.warn('⚠️ WhatsApp no está conectado');
+        return null;
+    }
+
+    const fechaFormateada = moment(cita.fecha).format('dddd, D [de] MMMM');
+    const horaFormateada = moment(cita.hora, 'HH:mm:ss').format('h:mm A');
+
+    const mensaje = `❌ *Cita Cancelada - Barbería Elite*
+
+Hola *${cita.clienteNombre}*,
+
+Lamentamos informarte que tu cita ha sido cancelada:
+
+📅 *Fecha:* ${fechaFormateada}
+🕐 *Hora:* ${horaFormateada}
+✂️ *Servicio:* ${cita.servicioNombre}
+
+📝 *Motivo:* ${motivo}
+
+Podés agendar una nueva cita cuando lo desees.
+
+📍 Barbería Elite`;
+
+    try {
+        const numeroCliente = cita.clienteTelefono.replace(/\D/g, '');
+        const jid = numeroCliente + '@s.whatsapp.net';
+
+        await whatsappClient.sendMessage(jid, { text: mensaje });
+        console.log(`✅ Notificación de cancelación enviada a ${cita.clienteNombre}`);
+        return true;
+    } catch (error) {
+        console.error('❌ Error al enviar notificación de cancelación:', error.message);
+        throw error;
+    }
+}
+
+export async function enviarNotificacionConfirmacion(cita) {
+    if (!whatsappClient || !isReady) {
+        console.warn('⚠️ WhatsApp no está conectado');
+        return null;
+    }
+
+    const fechaFormateada = moment(cita.fecha).format('dddd, D [de] MMMM');
+    const horaFormateada = moment(cita.hora, 'HH:mm:ss').format('h:mm A');
+
+    const mensaje = `✅ *Cita Confirmada - Barbería Elite*
+
+Hola *${cita.clienteNombre}*!
+
+Tu cita ha sido confirmada por nuestro equipo:
+
+📅 *Fecha:* ${fechaFormateada}
+🕐 *Hora:* ${horaFormateada}
+✂️ *Servicio:* ${cita.servicioNombre}
+👤 *Barbero:* ${cita.empleadoNombre}
+
+¡Te esperamos!
+
+📍 Barbería Elite`;
+
+    try {
+        const numeroCliente = cita.clienteTelefono.replace(/\D/g, '');
+        const jid = numeroCliente + '@s.whatsapp.net';
+
+        await whatsappClient.sendMessage(jid, { text: mensaje });
+        console.log(`✅ Notificación de confirmación enviada a ${cita.clienteNombre}`);
+        return true;
+    } catch (error) {
+        console.error('❌ Error al enviar notificación de confirmación:', error.message);
         throw error;
     }
 }

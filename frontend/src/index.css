@@ -2,7 +2,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Roboto:wght@300;400;500;700&display=swap');
 
 :root {
-  /* Paleta de colores premium - Barbería de lujo */
+  /* Paleta de colores premium - Barbería de lujo (DARK) */
   --primary-gold: #D4AF37;
   --primary-gold-dark: #B8941F;
   --primary-gold-light: #E8D08E;
@@ -37,6 +37,31 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tema Light */
+[data-theme="light"] {
+  --primary-gold: #B8941F;
+  --primary-gold-dark: #8B6F17;
+  --primary-gold-light: #D4AF37;
+  
+  --neutral-dark: #FFFFFF;
+  --neutral-charcoal: #F5F5F5;
+  --neutral-gray: #E0E0E0;
+  --neutral-silver: #757575;
+  --neutral-light: #212121;
+  --neutral-white: #000000;
+  
+  --accent-burgundy: #C62828;
+  --accent-burgundy-light: #E53935;
+  
+  --bg-dark: #FAFAFA;
+  --bg-gradient: linear-gradient(135deg, #FFFFFF 0%, #F5F5F5 100%);
+  
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.2);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.3);
 }
 
 * {

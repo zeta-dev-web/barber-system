@@ -1,6 +1,6 @@
 # 💈 Sistema de Gestión de Barbería
 
-Sistema completo de gestión de citas, empleados, servicios y reportes para barbería desarrollado con Node.js, Express, React y MySQL.
+Sistema completo de gestión de citas, empleados, servicios y reportes para barbería desarrollado con Node.js, Express, React y PostgreSQL + Prisma.
 
 **Autor:** Andrés Felipe Mora  
 **Licencia:** [Creative Commons BY-NC-SA 4.0](./LICENSE)
@@ -50,7 +50,8 @@ Sistema completo de gestión de citas, empleados, servicios y reportes para barb
 ### Backend
 - **Node.js** - Entorno de ejecución
 - **Express** - Framework web
-- **MySQL** - Base de datos relacional
+- **PostgreSQL** - Base de datos relacional
+- **Prisma** - ORM moderno y type-safe
 - **JWT** - Autenticación segura
 - **bcrypt** - Hash de contraseñas
 - **Nodemailer** - Envío de emails
@@ -69,12 +70,25 @@ Sistema completo de gestión de citas, empleados, servicios y reportes para barb
 ## 📦 Requisitos Previos
 
 - Node.js (v16 o superior)
-- MySQL 8.0+
+- PostgreSQL 14+
 - NPM o Yarn
 - Cuenta de Gmail (para envío de emails)
 - Cuenta de Twilio (para WhatsApp - opcional)
 
 ## 🚀 Instalación
+
+### Opción 1: Setup Automático (Recomendado)
+
+```bash
+git clone https://github.com/Morag47/Barbershop-System.git
+cd Barbershop-System
+
+# Configura tu .env primero (ver sección Configuración)
+# Luego ejecuta:
+setup.bat
+```
+
+### Opción 2: Setup Manual
 
 ### 1. Clonar el repositorio
 
@@ -83,15 +97,21 @@ git clone https://github.com/Morag47/Barbershop-System.git
 cd Barbershop-System
 ```
 
-### 2. Configurar la Base de Datos
+### 2. Configurar PostgreSQL
 
-Abre MySQL y ejecuta el archivo `backend/database_completo.sql`:
+Instala PostgreSQL si no lo tienes:
+```bash
+# Windows (con Chocolatey)
+choco install postgresql
 
-```sql
--- El archivo creará automáticamente:
--- - La base de datos barberia_db
--- - Todas las tablas necesarias
--- - Datos de ejemplo
+# O descarga desde: https://www.postgresql.org/download/windows/
+```
+
+Crea la base de datos:
+```bash
+psql -U postgres
+CREATE DATABASE barberia_db;
+\q
 ```
 
 ### 3. Instalar dependencias del Backend
@@ -101,7 +121,20 @@ cd backend
 npm install
 ```
 
-### 4. Instalar dependencias del Frontend
+### 4. Configurar Prisma
+
+```powershell
+# Generar cliente de Prisma
+npm run prisma:generate
+
+# Crear tablas en la base de datos
+npm run prisma:migrate
+
+# Cargar datos iniciales
+npm run prisma:seed
+```
+
+### 5. Instalar dependencias del Frontend
 
 ```powershell
 cd frontend
@@ -122,15 +155,16 @@ Copy-Item .env.example .env
 2. Edita el archivo `.env` con tus credenciales:
 
 ```env
-# Base de Datos
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=tu_password_mysql
-DB_NAME=barberia_db
-DB_PORT=3306
+# Base de Datos PostgreSQL
+DATABASE_URL="postgresql://postgres:tu_password@localhost:5432/barberia_db?schema=public"
+
+# Configuración del Servidor
+PORT=3000
+NODE_ENV=development
 
 # JWT
 JWT_SECRET=genera_una_clave_secreta_segura_aqui
+JWT_EXPIRES_IN=24h
 
 # Email (Gmail)
 EMAIL_USER=tu_email@gmail.com
@@ -422,8 +456,10 @@ DELETE /api/admin/dias-festivos/:id    # Eliminar día festivo
 
 ### Backend
 ```powershell
-npm start          # Iniciar en producción
-npm run dev        # Iniciar en desarrollo (con nodemon)
+npm start              # Iniciar en producción
+npm run dev            # Iniciar en desarrollo (con nodemon)
+npm run prisma:studio  # Abrir Prisma Studio (UI para ver DB)
+npm run prisma:migrate # Crear nueva migración
 ```
 
 ### Frontend
@@ -448,9 +484,21 @@ npm run preview    # Vista previa de producción
 ## 🐛 Solución de Problemas
 
 ### El servidor backend no inicia
-- Verifica que MySQL esté corriendo
-- Verifica las credenciales en el archivo `.env`
-- Asegúrate de haber ejecutado el script `database.sql`
+- Verifica que PostgreSQL esté corriendo
+- Verifica el DATABASE_URL en el archivo `.env`
+- Ejecuta `npm run prisma:generate`
+
+### Error: "Prisma Client not generated"
+```bash
+cd backend
+npm run prisma:generate
+```
+
+### Error en migraciones
+```bash
+npx prisma migrate reset
+npm run prisma:seed
+```
 
 ### Los emails no se envían
 - Verifica que tengas una contraseña de aplicación de Gmail (no tu contraseña normal)
@@ -489,7 +537,7 @@ Ver licencia completa en [LICENSE](./LICENSE)
 📧 Email: andres.moagui@gmail.com  
 🔗 GitHub: [@Morag47](https://github.com/Morag47)
 
-Desarrollado con ❤️ usando Node.js, Express, React y MySQL.
+Desarrollado con ❤️ usando Node.js, Express, React, PostgreSQL y Prisma.
 
 ---
 

@@ -54,4 +54,7 @@ router.get('/dias-festivos', adminController.obtenerDiasFestivos);
 router.post('/dias-festivos', adminController.crearDiaFestivo);
 router.delete('/dias-festivos/:id', adminController.eliminarDiaFestivo);
 
+// ===== CONFIGURACIÓN =====
+router.put('/configuracion', adminController.actualizarConfiguracion);
+
 export default router;

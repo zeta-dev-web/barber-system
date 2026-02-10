@@ -8,7 +8,8 @@ import DiaFestivo from '../models/DiaFestivo.js';
 import Venta from '../models/Venta.js';
 import jwt from 'jsonwebtoken';
 import { validationResult } from 'express-validator';
-import { enviarEmailRecibo } from '../services/emailService.js';
+import { enviarEmailRecibo, enviarEmailCitaCancelada } from '../services/emailService.js';
+import { enviarNotificacionCancelacion } from '../services/whatsappService.js';
 
 const adminController = {
     // Login de administrador
@@ -46,7 +47,8 @@ const adminController = {
                     id: admin.id,
                     usuario: admin.usuario,
                     nombre: admin.nombre,
-                    email: admin.email
+                    email: admin.email,
+                    whatsappNumero: admin.whatsappNumero
                 }
             });
         } catch (error) {
@@ -134,12 +136,6 @@ const adminController = {
             const errors = validationResult(req);
             if (!errors.isEmpty()) {
                 return res.status(400).json({ errors: errors.array() });
-            }
-
-            // Verificar si la cédula ya existe
-            const existente = await Empleado.obtenerPorCedula(req.body.cedula);
-            if (existente) {
-                return res.status(400).json({ error: 'Ya existe un empleado con esta cédula' });
             }
 
             const empleadoId = await Empleado.crear(req.body);
@@ -230,11 +226,18 @@ const adminController = {
         try {
             const { id } = req.params;
             const cita = await Cita.obtenerPorId(id);
+            
+            if (!cita) {
+                return res.status(404).json({ error: 'Cita no encontrada' });
+            }
+            
             const confirmada = await Cita.confirmar(id);
             
             if (!confirmada) {
-                return res.status(404).json({ error: 'Cita no encontrada' });
+                return res.status(404).json({ error: 'Error al confirmar cita' });
             }
+            
+            // No enviar notificaciones - el cliente ya recibió confirmación al reservar
             
             res.json({ message: 'Cita confirmada exitosamente' });
         } catch (error) {
@@ -246,15 +249,21 @@ const adminController = {
     async cancelarCita(req, res) {
         try {
             const { id } = req.params;
+            const { motivo } = req.body;
             
             // Verificar si la cita estaba completada para eliminar la venta
             const cita = await Cita.obtenerPorId(id);
-            const estabaCompletada = cita && cita.estado === 'completada';
             
-            const cancelada = await Cita.cancelar(id);
+            if (!cita) {
+                return res.status(404).json({ error: 'Cita no encontrada' });
+            }
+            
+            const estabaCompletada = cita.estado === 'completada';
+            
+            const cancelada = await Cita.cancelarConMotivo(id, motivo || 'Cancelada por el administrador');
             
             if (!cancelada) {
-                return res.status(404).json({ error: 'Cita no encontrada' });
+                return res.status(500).json({ error: 'Error al cancelar cita' });
             }
             
             // Si la cita estaba completada, eliminar la venta registrada
@@ -265,6 +274,19 @@ const adminController = {
                 } catch (ventaError) {
                     console.error('Error al eliminar venta:', ventaError);
                 }
+            }
+            
+            // Enviar notificaciones al cliente
+            try {
+                await enviarEmailCitaCancelada(cita, motivo || 'Cancelada por el administrador');
+            } catch (emailError) {
+                console.error('Error al enviar email:', emailError);
+            }
+            
+            try {
+                await enviarNotificacionCancelacion(cita, motivo || 'Cancelada por el administrador');
+            } catch (whatsappError) {
+                console.error('Error al enviar WhatsApp:', whatsappError);
             }
             
             res.json({ message: 'Cita cancelada exitosamente' });
@@ -295,14 +317,13 @@ const adminController = {
                 const ventaExiste = await Venta.existePorCita(id);
                 
                 if (!ventaExiste) {
-                    // Obtener el precio del servicio
-                    const servicio = await Servicio.obtenerPorId(cita.servicio_id);
+                    const servicio = await Servicio.obtenerPorId(cita.servicioId);
                     
                     if (servicio) {
                         await Venta.crear(
                             id,
-                            cita.empleado_id,
-                            cita.servicio_id,
+                            cita.empleadoId,
+                            cita.servicioId,
                             cita.fecha,
                             servicio.precio
                         );
@@ -484,6 +505,25 @@ const adminController = {
         } catch (error) {
             console.error('Error al eliminar día festivo:', error);
             res.status(500).json({ error: 'Error al eliminar día festivo' });
+        }
+    },
+
+    // ===== CONFIGURACIÓN =====
+    async actualizarConfiguracion(req, res) {
+        try {
+            const { whatsappNumero } = req.body;
+            const adminId = req.admin.id;
+
+            const actualizado = await Admin.actualizarConfiguracion(adminId, { whatsappNumero });
+            
+            if (!actualizado) {
+                return res.status(404).json({ error: 'Administrador no encontrado' });
+            }
+            
+            res.json({ message: 'Configuración actualizada exitosamente' });
+        } catch (error) {
+            console.error('Error al actualizar configuración:', error);
+            res.status(500).json({ error: 'Error al actualizar configuración' });
         }
     }
 };

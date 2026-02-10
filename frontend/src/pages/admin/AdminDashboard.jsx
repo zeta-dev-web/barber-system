@@ -5,6 +5,8 @@ import GestionServicios from './GestionServicios';
 import GestionEmpleados from './GestionEmpleados';
 import GestionBloqueos from './GestionBloqueos';
 import GestionReportes from './GestionReportes';
+import Configuracion from './Configuracion';
+import ThemeToggle from '../../components/ThemeToggle';
 
 // Función helper para formatear fechas correctamente
 const formatearFecha = (fechaString) => {
@@ -47,8 +49,7 @@ function GestionCitas() {
       setCitasFiltradas(citas);
     } else {
       const filtradas = citas.filter(cita => 
-        cita.cliente_nombre.toLowerCase().includes(busquedaNombre.toLowerCase()) ||
-        cita.cliente_cedula.includes(busquedaNombre)
+        cita.cliente_nombre.toLowerCase().includes(busquedaNombre.toLowerCase())
       );
       setCitasFiltradas(filtradas);
     }
@@ -73,7 +74,9 @@ function GestionCitas() {
         setMensaje('Cita confirmada exitosamente');
       }
       if (accion === 'cancelar') {
-        await adminAPI.cancelarCita(id);
+        const motivo = prompt('Ingresá el motivo de la cancelación:');
+        if (!motivo) return; // Si cancela el prompt, no hace nada
+        await adminAPI.cancelarCita(id, { motivo });
         setMensaje('Cita cancelada');
       }
       if (accion === 'completar') {
@@ -107,7 +110,7 @@ function GestionCitas() {
             </label>
             <input
               type="text"
-              placeholder="Nombre o cédula..."
+              placeholder="Nombre del cliente..."
               value={busquedaNombre}
               onChange={(e) => setBusquedaNombre(e.target.value)}
               style={{ 
@@ -204,9 +207,6 @@ function GestionCitas() {
                 <tr key={cita.id}>
                   <td>
                     <div style={{ fontWeight: '600' }}>{cita.cliente_nombre}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--neutral-silver)' }}>
-                      {cita.cliente_cedula}
-                    </div>
                   </td>
                   <td style={{ fontWeight: '500' }}>
                     {cita.cliente_telefono}
@@ -293,19 +293,15 @@ function GestionCitas() {
                         </>
                       )}
                       
-                      {/* Estado: COMPLETADA - Solo cancelar (para corregir errores) */}
+                      {/* Estado: COMPLETADA - Sin acciones */}
                       {cita.estado === 'completada' && (
-                        <button 
-                          onClick={() => cambiarEstado(cita.id, 'cancelar')}
-                          className="btn btn-danger" 
-                          style={{ 
-                            padding: '0.5rem 1rem', 
-                            fontSize: '0.85rem',
-                            minWidth: '90px'
-                          }}
-                        >
-                          ✗ Cancelar
-                        </button>
+                        <span style={{ 
+                          color: 'var(--neutral-silver)', 
+                          fontSize: '0.85rem',
+                          fontStyle: 'italic'
+                        }}>
+                          Servicio completado
+                        </span>
                       )}
                       
                       {/* Estado: CANCELADA - Reactivar como confirmada */}
@@ -419,6 +415,8 @@ function AdminDashboard() {
         return <GestionBloqueos />;
       case 'reportes':
         return <GestionReportes />;
+      case 'configuracion':
+        return <Configuracion />;
       default:
         return <GestionCitas />;
     }
@@ -445,6 +443,7 @@ function AdminDashboard() {
                 {admin.nombre}
               </span>
             </div>
+            <ThemeToggle />
             <button 
               onClick={handleLogout} 
               className="btn btn-danger"
@@ -456,9 +455,9 @@ function AdminDashboard() {
         </div>
       </nav>
 
-      <div style={{ display: 'flex', minHeight: 'calc(100vh - 70px)' }}>
+      <div className="admin-layout" style={{ display: 'flex', minHeight: 'calc(100vh - 70px)' }}>
         {/* Sidebar Premium */}
-        <div style={{ 
+        <div className="admin-sidebar" style={{ 
           width: '220px', 
           background: 'var(--neutral-charcoal)',
           borderRight: '1px solid var(--neutral-gray)',
@@ -592,6 +591,29 @@ function AdminDashboard() {
               <span>Reportes</span>
             </button>
             
+            <button 
+              onClick={() => setSeccionActiva('configuracion')}
+              style={{ 
+                color: seccionActiva === 'configuracion' ? 'var(--primary-gold)' : 'var(--neutral-light)',
+                background: 'transparent',
+                border: 'none',
+                textAlign: 'left',
+                cursor: 'pointer',
+                padding: '0.9rem 1rem',
+                borderLeft: seccionActiva === 'configuracion' ? '4px solid var(--primary-gold)' : '4px solid transparent',
+                backgroundColor: seccionActiva === 'configuracion' ? 'rgba(212, 175, 55, 0.1)' : 'transparent',
+                fontWeight: seccionActiva === 'configuracion' ? '600' : '400',
+                transition: 'var(--transition)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.8rem',
+                fontSize: '0.95rem'
+              }}
+            >
+              <span style={{ fontSize: '1.2rem' }}>⚙️</span>
+              <span>Configuración</span>
+            </button>
+            
             <Link 
               to="/" 
               style={{ 
@@ -616,7 +638,7 @@ function AdminDashboard() {
         </div>
 
         {/* Contenido principal */}
-        <div style={{ 
+        <div className="admin-content" style={{ 
           flex: 1, 
           padding: '2.5rem', 
           background: 'var(--bg-dark)',

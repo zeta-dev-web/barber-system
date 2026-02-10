@@ -1,0 +1,40 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Deploy to VPS
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        password: ${{ secrets.VPS_PASSWORD }}
+        port: ${{ secrets.VPS_PORT }}
+        script: |
+          cd /var/www/barbershop
+          git pull origin main
+          
+          # Backend
+          cd backend
+          npm install --production
+          npx prisma generate
+          npx prisma migrate deploy
+          pm2 restart barbershop-backend || pm2 start npm --name "barbershop-backend" -- start
+          
+          # Frontend
+          cd ../frontend
+          npm install
+          npm run build
+          pm2 restart barbershop-frontend || pm2 serve dist 5173 --name "barbershop-frontend" --spa
+          
+          pm2 save

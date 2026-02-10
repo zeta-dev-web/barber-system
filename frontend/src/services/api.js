@@ -93,7 +93,7 @@ export const adminAPI = {
     // Citas
     obtenerCitas: (estado) => api.get('/admin/citas', { params: { estado } }),
     confirmarCita: (id) => api.patch(`/admin/citas/${id}/confirmar`),
-    cancelarCita: (id) => api.patch(`/admin/citas/${id}/cancelar`),
+    cancelarCita: (id, data) => api.patch(`/admin/citas/${id}/cancelar`, data),
     completarCita: (id) => api.patch(`/admin/citas/${id}/completar`),
     
     // Horarios
@@ -111,34 +111,37 @@ export const adminAPI = {
     // Días festivos
     obtenerDiasFestivos: () => api.get('/admin/dias-festivos'),
     crearDiaFestivo: (dia) => api.post('/admin/dias-festivos', dia),
-    eliminarDiaFestivo: (id) => api.delete(`/admin/dias-festivos/${id}`)
+    eliminarDiaFestivo: (id) => api.delete(`/admin/dias-festivos/${id}`),
+    
+    // Configuración
+    actualizarConfiguracion: (config) => api.put('/admin/configuracion', config)
 };
 
 // API de Reportes
 export const reportesAPI = {
     // Obtener datos de reportes
-    obtenerReporteDiario: (fecha) => api.get('/reportes/diario', { params: { fecha } }),
-    obtenerReporteSemanal: (fechaInicio, fechaFin) => 
-        api.get('/reportes/semanal', { params: { fechaInicio, fechaFin } }),
-    obtenerReporteMensual: (fechaInicio, fechaFin) => 
-        api.get('/reportes/mensual', { params: { fechaInicio, fechaFin } }),
+    obtenerReporteDiario: (fecha, empleadoId) => api.get('/reportes/diario', { params: { fecha, empleadoId } }),
+    obtenerReporteSemanal: (fechaInicio, fechaFin, empleadoId) => 
+        api.get('/reportes/semanal', { params: { fechaInicio, fechaFin, empleadoId } }),
+    obtenerReporteMensual: (fechaInicio, fechaFin, empleadoId) => 
+        api.get('/reportes/mensual', { params: { fechaInicio, fechaFin, empleadoId } }),
     
     // Descargar PDFs (retorna blob para descarga)
-    descargarPDFDiario: (fecha) => {
+    descargarPDFDiario: (fecha, empleadoId) => {
         return api.get('/reportes/pdf/diario', { 
-            params: { fecha },
+            params: { fecha, empleadoId },
             responseType: 'blob'
         });
     },
-    descargarPDFSemanal: (fechaInicio, fechaFin) => {
+    descargarPDFSemanal: (fechaInicio, fechaFin, empleadoId) => {
         return api.get('/reportes/pdf/semanal', { 
-            params: { fechaInicio, fechaFin },
+            params: { fechaInicio, fechaFin, empleadoId },
             responseType: 'blob'
         });
     },
-    descargarPDFMensual: (fechaInicio, fechaFin) => {
+    descargarPDFMensual: (fechaInicio, fechaFin, empleadoId) => {
         return api.get('/reportes/pdf/mensual', { 
-            params: { fechaInicio, fechaFin },
+            params: { fechaInicio, fechaFin, empleadoId },
             responseType: 'blob'
         });
     }

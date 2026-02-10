@@ -22,7 +22,7 @@ const horariosController = {
                 return res.status(400).json({ error: 'Todos los campos son requeridos' });
             }
 
-            const id = await Horario.guardar({ empleado_id, dia_semana, hora_inicio, hora_fin, activo });
+            const id = await Horario.crear({ empleado_id, dia_semana, hora_inicio, hora_fin });
             res.json({ 
                 message: 'Horario guardado exitosamente', 
                 id 
