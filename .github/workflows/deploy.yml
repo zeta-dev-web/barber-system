@@ -2,39 +2,37 @@ name: Deploy to VPS
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Deploy to VPS
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.VPS_HOST }}
-        username: ${{ secrets.VPS_USERNAME }}
-        password: ${{ secrets.VPS_PASSWORD }}
-        port: ${{ secrets.VPS_PORT }}
-        script: |
-          cd /var/www/barbershop
-          git pull origin main
-          
-          # Backend
-          cd backend
-          npm install --production
-          npx prisma generate
-          npx prisma migrate deploy
-          pm2 restart barbershop-backend || pm2 start npm --name "barbershop-backend" -- start
-          
-          # Frontend
-          cd ../frontend
-          npm install
-          npm run build
-          pm2 restart barbershop-frontend || pm2 serve dist 5173 --name "barbershop-frontend" --spa
-          
-          pm2 save
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+            cd /var/www/barbershop
+            git reset --hard
+            git pull origin main
+            cd backend
+            npm install --production
+            npx prisma generate
+            npx prisma migrate deploy
+            pm2 delete barbershop-backend || true
+            pm2 start npm --name barbershop-backend -- start
+            pm2 save
+            cd ../frontend
+            npm install
+            npm run build
+            sudo rm -rf /var/www/barbershop-frontend/*
+            sudo cp -r dist/* /var/www/barbershop-frontend/
+            sudo chown -R www-data:www-data /var/www/barbershop-frontend
+            pm2 save
