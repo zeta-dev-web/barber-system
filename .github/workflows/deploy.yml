@@ -17,22 +17,30 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
+            # Cargar NVM para usar Node.js
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-            cd /barber-system
+            
+            # Actualizar código desde GitHub
+            cd ~/barber-system
             git reset --hard
             git pull origin main
+            
+            # Desplegar Backend
             cd backend
-            npm install --production
+            npm install --omit=dev
             npx prisma generate
             npx prisma migrate deploy
             pm2 delete barbershop-backend || true
             pm2 start npm --name barbershop-backend -- start
             pm2 save
+            
+            # Desplegar Frontend
             cd ../frontend
             npm install
             npm run build
-            sudo rm -rf /var/www/barbershop-frontend/*
-            sudo cp -r dist/* /var/www/barbershop-frontend/
-            sudo chown -R www-data:www-data /var/www/barbershop-frontend
+            mkdir -p /var/www/barbershop-frontend
+            rm -rf /var/www/barbershop-frontend/*
+            cp -r dist/* /var/www/barbershop-frontend/
+            chown -R www-data:www-data /var/www/barbershop-frontend
             pm2 save
