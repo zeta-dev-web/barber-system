@@ -39,8 +39,4 @@ jobs:
             cd ../frontend
             npm install
             npm run build
-            mkdir -p /var/www/barbershop-frontend
-            rm -rf /var/www/barbershop-frontend/*
-            cp -r dist/* /var/www/barbershop-frontend/
-            chown -R www-data:www-data /var/www/barbershop-frontend
             pm2 save
