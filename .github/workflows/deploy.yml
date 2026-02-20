@@ -31,6 +31,7 @@ jobs:
             npm install --omit=dev
             npx prisma generate
             npx prisma migrate deploy
+            npx prisma db seed
             pm2 delete barbershop-backend || true
             pm2 start npm --name barbershop-backend -- start
             pm2 save
