@@ -193,7 +193,8 @@ function GestionReportes() {
         gap: '1rem', 
         marginBottom: '2rem',
         borderBottom: '1px solid var(--neutral-gray)',
-        paddingBottom: '1rem'
+        paddingBottom: '1rem',
+        flexWrap: 'wrap'
       }}>
         <button
           onClick={() => setTipoReporte('diario')}
@@ -205,7 +206,10 @@ function GestionReportes() {
             borderRadius: '4px',
             cursor: 'pointer',
             fontWeight: '600',
-            transition: 'var(--transition)'
+            transition: 'var(--transition)',
+            flex: '1 1 auto',
+            minWidth: '0',
+            fontSize: '0.9rem'
           }}
         >
           📅 Reporte Diario
@@ -220,7 +224,10 @@ function GestionReportes() {
             borderRadius: '4px',
             cursor: 'pointer',
             fontWeight: '600',
-            transition: 'var(--transition)'
+            transition: 'var(--transition)',
+            flex: '1 1 auto',
+            minWidth: '0',
+            fontSize: '0.9rem'
           }}
         >
           📊 Reporte Semanal
@@ -235,7 +242,10 @@ function GestionReportes() {
             borderRadius: '4px',
             cursor: 'pointer',
             fontWeight: '600',
-            transition: 'var(--transition)'
+            transition: 'var(--transition)',
+            flex: '1 1 auto',
+            minWidth: '0',
+            fontSize: '0.9rem'
           }}
         >
           📈 Reporte Mensual

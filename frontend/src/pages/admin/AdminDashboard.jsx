@@ -398,7 +398,7 @@ function AdminDashboard() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('admin');
-    navigate('/admin/login');
+    navigate('/');
   };
 
   if (!admin) return null;
@@ -424,7 +424,7 @@ function AdminDashboard() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-dark)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-dark)', overflow: 'hidden' }}>
       {/* Header Premium */}
       <nav style={{
         background: 'var(--neutral-dark)',
@@ -440,29 +440,15 @@ function AdminDashboard() {
           display: 'flex',
           alignItems: 'center'
         }}>
-          <h1 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--primary-gold)', marginRight: 'auto' }}>HIGHBURY BARBER - ADMIN</h1>
+          <h1 style={{ margin: 0, fontSize: 'clamp(1rem, 3vw, 1.3rem)', color: 'var(--primary-gold)', marginRight: 'auto' }}>HIGHBURY BARBER - ADMIN</h1>
           
           {/* Desktop Nav */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }} className="desktop-only">
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.5rem',
-              padding: '0.5rem 1rem',
-              background: 'var(--neutral-charcoal)',
-              borderRadius: '4px',
-              border: '1px solid var(--primary-gold)'
-            }}>
-              <span style={{ fontSize: '1.2rem' }}>👤</span>
-              <span style={{ color: 'var(--primary-gold)', fontWeight: '600' }}>
-                {admin.nombre}
-              </span>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }} className="desktop-only">
             <ThemeToggle />
             <button 
               onClick={handleLogout} 
               className="btn btn-danger"
-              style={{ padding: '0.7rem 1.5rem' }}
+              style={{ padding: '0.7rem 1.5rem', fontSize: '0.9rem' }}
             >
               Cerrar Sesión
             </button>
@@ -494,18 +480,6 @@ function AdminDashboard() {
             paddingTop: '1rem',
             borderTop: '1px solid var(--neutral-gray)'
           }} className="mobile-only">
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.5rem',
-              padding: '0.75rem 0',
-              marginBottom: '1rem'
-            }}>
-              <span style={{ fontSize: '1.2rem' }}>👤</span>
-              <span style={{ color: 'var(--primary-gold)', fontWeight: '600' }}>
-                {admin.nombre}
-              </span>
-            </div>
             <div style={{ padding: '0.75rem 0' }}>
               <ThemeToggle />
             </div>
@@ -530,7 +504,7 @@ function AdminDashboard() {
         }</style>
       </nav>
 
-      <div className="admin-layout" style={{ display: 'flex', minHeight: 'calc(100vh - 70px)' }}>
+      <div className="admin-layout" style={{ display: 'flex', minHeight: 'calc(100vh - 70px)', overflow: 'hidden' }}>
         {/* Sidebar Premium */}
         <div className="admin-sidebar" style={{ 
           width: '220px', 

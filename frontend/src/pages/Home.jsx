@@ -85,6 +85,23 @@ function Home() {
     <div className="fade-in">
       <Navbar />
 
+      {/* Botón Flotante de Reservar */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 1, duration: 0.5 }}
+        className="floating-btn"
+      >
+        <Link
+          to="/reservar"
+          className="floating-btn-link"
+        >
+          <span style={{ fontSize: '1.3rem' }}>📅</span>
+          <span className="floating-btn-text">Reservar Cita</span>
+          <span className="floating-btn-text-mobile">Reservar</span>
+        </Link>
+      </motion.div>
+
       {/* Hero Section */}
       <motion.div 
         className="hero"
@@ -244,7 +261,7 @@ function Home() {
           transition={{ delay: 0.4 }}
         >
           <Link to="/reservar" className="btn btn-primary" style={{ fontSize: '1.1rem' }}>
-            Reservar Mi Cita
+            Reservar Cita
           </Link>
         </motion.div>
       </motion.div>

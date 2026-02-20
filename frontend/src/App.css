@@ -449,11 +449,24 @@ input[type="date"]:focus {
   }
   
   .admin-content h2 {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
+    word-break: break-word;
   }
   
   .admin-content h3 {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
+  }
+  
+  /* Botones de tipo de reporte en columna */
+  .admin-content > div > div[style*="display: flex"][style*="gap: 1rem"] {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  
+  .admin-content > div > div[style*="display: flex"] button {
+    width: 100% !important;
+    white-space: normal !important;
+    padding: 0.8rem 1rem !important;
   }
   
   /* Filtros y controles en columna */
@@ -462,10 +475,27 @@ input[type="date"]:focus {
     align-items: stretch !important;
   }
   
+  /* Reportes: Contenedores de fechas en columna */
+  .card > div[style*="display: flex"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  
+  .card > div[style*="display: flex"] > div {
+    flex: none !important;
+    width: 100% !important;
+  }
+  
+  .card > div[style*="display: flex"] button {
+    width: 100% !important;
+    margin-top: 0.5rem;
+  }
+  
   .admin-content select,
   .admin-content input {
     width: 100% !important;
     min-width: auto !important;
+    max-width: 100% !important;
   }
   
   /* Botones de acción en columna */

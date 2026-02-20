@@ -53,11 +53,11 @@ function Configuracion() {
                             type="text"
                             value={whatsappNumero}
                             onChange={(e) => setWhatsappNumero(e.target.value)}
-                            placeholder="+5493816625078"
+                            placeholder="+5493816456456"
                             className="form-control"
                         />
                         <small className="form-text">
-                            Ingresá el número con código de país (ej: +5493816625078)
+                            Ingresá el número con código de país (ej: +5493816456456)
                         </small>
                     </div>
 
