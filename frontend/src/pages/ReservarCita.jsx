@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { serviciosAPI, empleadosAPI, disponibilidadAPI, citasAPI } from '../services/api';
+import Navbar from '../components/Navbar';
 
 function ReservarCita() {
   const navigate = useNavigate();
@@ -206,11 +207,7 @@ function ReservarCita() {
   if (success) {
     return (
       <div className="fade-in">
-        <nav className="navbar">
-          <div className="navbar-content">
-            <h1>HIGHBURY BARBER</h1>
-          </div>
-        </nav>
+        <Navbar />
         <div className="container" style={{ 
           maxWidth: '600px', 
           textAlign: 'center', 
@@ -247,14 +244,7 @@ function ReservarCita() {
 
   return (
     <div className="fade-in">
-      <nav className="navbar">
-        <div className="navbar-content">
-          <h1>HIGHBURY BARBER</h1>
-          <nav>
-            <Link to="/">Volver al Inicio</Link>
-          </nav>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="container" style={{ maxWidth: '900px', paddingTop: '3rem', paddingBottom: '3rem' }}>
         <h2 style={{ textAlign: 'center', marginBottom: '2rem' }}>

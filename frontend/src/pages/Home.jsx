@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { serviciosAPI } from '../services/api';
-import ThemeToggle from '../components/ThemeToggle';
+import Navbar from '../components/Navbar';
 
 function Home() {
   const [servicios, setServicios] = useState([]);
@@ -22,42 +23,133 @@ function Home() {
     }
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15,
+        delayChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 50, opacity: 0, scale: 0.9 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      scale: 1,
+      transition: {
+        type: 'spring',
+        stiffness: 100,
+        damping: 12
+      }
+    }
+  };
+
+  const features = [
+    {
+      icon: <div style={{ fontSize: '2.5rem' }}>👨‍💼</div>,
+      title: 'Maestros Barberos',
+      description: 'Profesionales certificados con años de experiencia'
+    },
+    {
+      icon: <div style={{ fontSize: '2.5rem' }}>✨</div>,
+      title: 'Productos Premium',
+      description: 'Utilizamos únicamente las mejores marcas internacionales'
+    },
+    {
+      icon: <div style={{ fontSize: '2.5rem' }}>⏰</div>,
+      title: 'Horarios Flexibles',
+      description: 'Lunes a Sábado de 10:00 AM a 6:00 PM'
+    },
+    {
+      icon: <div style={{ fontSize: '2.5rem' }}>🏆</div>,
+      title: 'Ambiente Exclusivo',
+      description: 'Un espacio diseñado para tu comodidad total'
+    },
+    {
+      icon: <div style={{ fontSize: '2.5rem' }}>📱</div>,
+      title: 'Sistema Digital',
+      description: 'Reservá online 24/7 y recibí recordatorios automáticos'
+    },
+    {
+      icon: <div style={{ fontSize: '2.5rem' }}>✂️</div>,
+      title: 'Atención Personalizada',
+      description: 'Cada cliente recibe un servicio único'
+    }
+  ];
+
   return (
     <div className="fade-in">
-      {/* Navbar Premium */}
-      <nav className="navbar">
-        <div className="navbar-content">
-          <h1>HIGHBURY BARBER</h1>
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <Link to="/" className="active">Inicio</Link>
-            <Link to="/reservar">Reservar Cita</Link>
-            <Link to="/admin/login">Administración</Link>
-            <ThemeToggle />
-          </nav>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero Section */}
-      <div className="hero">
-        <h1>Estilo & Distinción</h1>
-        <p>Experimentá el arte del cuidado masculino en su máxima expresión. Tradición, elegancia y perfección en cada detalle.</p>
-        <Link to="/reservar" className="btn btn-primary">
-          Reservar Cita
-        </Link>
-      </div>
+      <motion.div 
+        className="hero"
+        initial={{ opacity: 0, y: -50 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+      >
+        <motion.h1
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2, duration: 0.6 }}
+        >
+          Estilo & Distinción
+        </motion.h1>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4, duration: 0.6 }}
+        >
+          Experimentá el arte del cuidado masculino en su máxima expresión. Tradición, elegancia y perfección en cada detalle.
+        </motion.p>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.6 }}
+        >
+          <Link to="/reservar" className="btn btn-primary">
+            Reservar Cita
+          </Link>
+        </motion.div>
+      </motion.div>
 
       {/* Servicios */}
       <div className="container">
-        <h2 style={{ textAlign: 'center', marginBottom: '3rem', marginTop: '4rem' }}>
+        <motion.h2 
+          style={{ textAlign: 'center', marginBottom: '3rem', marginTop: '4rem' }}
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
           Nuestros Servicios
-        </h2>
+        </motion.h2>
         
         {loading ? (
           <div className="loading">Cargando servicios exclusivos...</div>
         ) : (
-          <div className="grid grid-3">
+          <motion.div 
+            className="grid grid-3"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
             {servicios.map((servicio) => (
-              <div key={servicio.id} className="service-card">
+              <motion.div 
+                key={servicio.id} 
+                className="service-card"
+                variants={itemVariants}
+                whileHover={{ 
+                  scale: 1.05,
+                  boxShadow: '0 10px 30px rgba(212, 175, 55, 0.3)'
+                }}
+                whileTap={{ scale: 0.98 }}
+              >
                 <h3>{servicio.nombre}</h3>
                 <p>{servicio.descripcion}</p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -70,71 +162,92 @@ function Home() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
 
       {/* Features Section */}
       <div className="features-section">
         <div className="container">
-          <h2 style={{ textAlign: 'center', marginBottom: '3rem' }}>
+          <motion.h2 
+            style={{ textAlign: 'center', marginBottom: '3rem' }}
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+          >
             La Experiencia Highbury
-          </h2>
+          </motion.h2>
           
-          <div className="features-grid">
-            <div className="feature-card">
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>👨‍💼</div>
-              <h4>Maestros Barberos</h4>
-              <p>Profesionales certificados con años de experiencia en técnicas clásicas y modernas</p>
-            </div>
-            
-            <div className="feature-card">
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✨</div>
-              <h4>Productos Premium</h4>
-              <p>Utilizamos únicamente productos de las mejores marcas internacionales</p>
-            </div>
-            
-            <div className="feature-card">
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏱</div>
-              <h4>Horarios Flexibles</h4>
-              <p>Lunes a Sábado de 10:00 AM a 6:00 PM. Reservá tu turno con facilidad</p>
-            </div>
-            
-            <div className="feature-card">
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏆</div>
-              <h4>Ambiente Exclusivo</h4>
-              <p>Un espacio diseñado para tu comodidad y relajación total</p>
-            </div>
-            
-            <div className="feature-card">
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📱</div>
-              <h4>Sistema Digital</h4>
-              <p>Reservá online 24/7 y recibí recordatorios automáticos</p>
-            </div>
-            
-            <div className="feature-card">
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💎</div>
-              <h4>Atención Personalizada</h4>
-              <p>Cada cliente recibe un servicio único adaptado a sus necesidades</p>
-            </div>
-          </div>
+          <motion.div 
+            className="features-grid"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            {features.map((feature, index) => (
+              <motion.div 
+                key={index}
+                className="feature-card"
+                variants={itemVariants}
+                whileHover={{ 
+                  y: -10,
+                  transition: { type: 'spring', stiffness: 300 }
+                }}
+              >
+                <motion.div 
+                  style={{ marginBottom: '1rem' }}
+                  whileHover={{ rotate: 360 }}
+                  transition={{ duration: 0.6 }}
+                >
+                  {feature.icon}
+                </motion.div>
+                <h4>{feature.title}</h4>
+                <p>{feature.description}</p>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
       </div>
 
       {/* Call to Action */}
-      <div className="container" style={{ textAlign: 'center', padding: '5rem 2rem' }}>
-        <h2 style={{ marginBottom: '1.5rem' }}>
+      <motion.div 
+        className="container" 
+        style={{ textAlign: 'center', padding: '5rem 2rem' }}
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+      >
+        <motion.h2 
+          style={{ marginBottom: '1.5rem' }}
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
           Transformá Tu Estilo Hoy
-        </h2>
-        <p style={{ fontSize: '1.2rem', marginBottom: '2rem', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>
+        </motion.h2>
+        <motion.p 
+          style={{ fontSize: '1.2rem', marginBottom: '2rem', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.2 }}
+        >
           Dale a tu imagen la importancia que merece. Reservá tu cita y descubrí la diferencia de un servicio verdaderamente premium.
-        </p>
-        <Link to="/reservar" className="btn btn-primary" style={{ fontSize: '1.1rem' }}>
-          Reservar Mi Cita
-        </Link>
-      </div>
+        </motion.p>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.4 }}
+        >
+          <Link to="/reservar" className="btn btn-primary" style={{ fontSize: '1.1rem' }}>
+            Reservar Mi Cita
+          </Link>
+        </motion.div>
+      </motion.div>
 
       {/* Footer */}
       <footer style={{ 
@@ -151,7 +264,7 @@ function Home() {
             Bogotá, Colombia • Lun - Sáb: 10:00 - 18:00
           </p>
           <p style={{ color: 'var(--neutral-gray)', fontSize: '0.9rem' }}>
-            © 2025 Highbury Barber. Todos los derechos reservados.
+            © 2026 Made by ZetaDev & Matias Ahumada. Todos los derechos reservados.
           </p>
         </div>
       </footer>
