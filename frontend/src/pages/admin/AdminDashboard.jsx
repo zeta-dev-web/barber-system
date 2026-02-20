@@ -381,6 +381,7 @@ function AdminDashboard() {
   const navigate = useNavigate();
   const [admin, setAdmin] = useState(null);
   const [seccionActiva, setSeccionActiva] = useState('citas');
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -425,10 +426,24 @@ function AdminDashboard() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-dark)' }}>
       {/* Header Premium */}
-      <nav className="navbar">
-        <div className="navbar-content">
-          <h1>HIGHBURY BARBER - ADMIN</h1>
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+      <nav style={{
+        background: 'var(--neutral-dark)',
+        borderBottom: '1px solid var(--primary-gold)',
+        padding: '1rem 1.5rem',
+        position: 'sticky',
+        top: 0,
+        zIndex: 1000
+      }}>
+        <div style={{
+          maxWidth: '100%',
+          margin: '0 auto',
+          display: 'flex',
+          alignItems: 'center'
+        }}>
+          <h1 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--primary-gold)', marginRight: 'auto' }}>HIGHBURY BARBER - ADMIN</h1>
+          
+          {/* Desktop Nav */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }} className="desktop-only">
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
@@ -451,8 +466,68 @@ function AdminDashboard() {
             >
               Cerrar Sesión
             </button>
-          </nav>
+          </div>
+
+          {/* Mobile Hamburger */}
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--primary-gold)',
+              fontSize: '1.8rem',
+              cursor: 'pointer',
+              padding: '0.5rem',
+              display: 'none'
+            }}
+            className="mobile-only"
+          >
+            {menuOpen ? '✕' : '☰'}
+          </button>
         </div>
+
+        {/* Mobile Menu */}
+        {menuOpen && (
+          <div style={{
+            display: 'block',
+            marginTop: '1rem',
+            paddingTop: '1rem',
+            borderTop: '1px solid var(--neutral-gray)'
+          }} className="mobile-only">
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem',
+              padding: '0.75rem 0',
+              marginBottom: '1rem'
+            }}>
+              <span style={{ fontSize: '1.2rem' }}>👤</span>
+              <span style={{ color: 'var(--primary-gold)', fontWeight: '600' }}>
+                {admin.nombre}
+              </span>
+            </div>
+            <div style={{ padding: '0.75rem 0' }}>
+              <ThemeToggle />
+            </div>
+            <button 
+              onClick={handleLogout} 
+              className="btn btn-danger"
+              style={{ padding: '0.7rem 1.5rem', width: '100%', marginTop: '1rem' }}
+            >
+              Cerrar Sesión
+            </button>
+          </div>
+        )}
+
+        <style>{
+          `@media (min-width: 769px) {
+            .mobile-only { display: none !important; }
+          }
+          @media (max-width: 768px) {
+            .desktop-only { display: none !important; }
+            .mobile-only { display: block !important; }
+          }`
+        }</style>
       </nav>
 
       <div className="admin-layout" style={{ display: 'flex', minHeight: 'calc(100vh - 70px)' }}>

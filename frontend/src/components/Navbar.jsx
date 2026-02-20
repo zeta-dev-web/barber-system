@@ -4,6 +4,9 @@ import ThemeToggle from './ThemeToggle';
 
 function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const isLoggedIn = !!localStorage.getItem('token');
+  const adminLink = isLoggedIn ? '/admin' : '/admin/login';
+  const adminText = isLoggedIn ? 'Panel Admin' : 'Administración';
 
   return (
     <nav style={{
@@ -18,7 +21,6 @@ function Navbar() {
         maxWidth: '1200px',
         margin: '0 auto',
         display: 'flex',
-        justifyContent: 'space-between',
         alignItems: 'center'
       }}>
         {/* Logo */}
@@ -26,7 +28,8 @@ function Navbar() {
           fontSize: '1.3rem',
           fontWeight: 'bold',
           color: 'var(--primary-gold)',
-          textDecoration: 'none'
+          textDecoration: 'none',
+          marginRight: 'auto'
         }}>
           HIGHBURY BARBER
         </Link>
@@ -39,7 +42,7 @@ function Navbar() {
         }} className="desktop-only">
           <Link to="/" style={{ color: 'var(--neutral-silver)', textDecoration: 'none' }}>Inicio</Link>
           <Link to="/reservar" style={{ color: 'var(--neutral-silver)', textDecoration: 'none' }}>Reservar Cita</Link>
-          <Link to="/admin/login" style={{ color: 'var(--neutral-silver)', textDecoration: 'none' }}>Administración</Link>
+          <Link to={adminLink} style={{ color: 'var(--neutral-silver)', textDecoration: 'none' }}>{adminText}</Link>
           <ThemeToggle />
         </div>
 
@@ -71,7 +74,7 @@ function Navbar() {
         }} className="mobile-only">
           <Link to="/" onClick={() => setIsOpen(false)} style={{ color: 'var(--neutral-silver)', textDecoration: 'none', padding: '0.75rem 0', display: 'block' }}>Inicio</Link>
           <Link to="/reservar" onClick={() => setIsOpen(false)} style={{ color: 'var(--neutral-silver)', textDecoration: 'none', padding: '0.75rem 0', display: 'block' }}>Reservar Cita</Link>
-          <Link to="/admin/login" onClick={() => setIsOpen(false)} style={{ color: 'var(--neutral-silver)', textDecoration: 'none', padding: '0.75rem 0', display: 'block' }}>Administración</Link>
+          <Link to={adminLink} onClick={() => setIsOpen(false)} style={{ color: 'var(--neutral-silver)', textDecoration: 'none', padding: '0.75rem 0', display: 'block' }}>{adminText}</Link>
           <div style={{ padding: '0.75rem 0' }}>
             <ThemeToggle />
           </div>
@@ -91,6 +94,10 @@ function Navbar() {
           .mobile-only {
             display: block !important;
           }
+        }
+        .desktop-only a:hover {
+          color: var(--primary-gold) !important;
+          transition: color 0.3s ease;
         }
       `}</style>
     </nav>
