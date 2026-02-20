@@ -1,7 +1,6 @@
 -- ============================================================
 -- SISTEMA DE GESTIÓN DE BARBERÍA - BASE DE DATOS COMPLETA
--- Autor: Andrés Felipe Mora
--- Licencia: CC BY-NC-SA 4.0
+-- Autor: Leonardo Zamorano y Matias Ahumada
 -- Zona horaria: America/Bogota
 -- ============================================================
 
